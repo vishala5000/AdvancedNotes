@@ -11,25 +11,25 @@ permissions:
   contents: read
 
 jobs:
-
   build:
 
-    name: Build Windows 7 10 11 Application
+    name: Build Advanced Notes Windows App
 
     runs-on: windows-2022
 
     steps:
 
-      # -------------------------------------------------------
+      # ======================================================
       # CHECKOUT
-      # -------------------------------------------------------
+      # ======================================================
 
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -------------------------------------------------------
-      # PYTHON
-      # -------------------------------------------------------
+
+      # ======================================================
+      # PYTHON 3.8.10 32-BIT
+      # ======================================================
 
       - name: Setup Python 3.8.10 x86
         uses: actions/setup-python@v5
@@ -37,46 +37,135 @@ jobs:
           python-version: "3.8.10"
           architecture: x86
 
-      # -------------------------------------------------------
+
+      # ======================================================
       # VERIFY PYTHON
-      # -------------------------------------------------------
+      # ======================================================
 
       - name: Verify Python
         shell: cmd
         run: |
+          echo ==========================================
+          echo PYTHON INFORMATION
+          echo ==========================================
+
           python --version
+
+          python -c "import sys; print(sys.executable)"
           python -c "import platform; print(platform.architecture())"
 
-      # -------------------------------------------------------
-      # INSTALL PYTHON DEPENDENCIES
-      # -------------------------------------------------------
+          echo.
+          echo ==========================================
+          echo PYTHON VERIFICATION COMPLETE
+          echo ==========================================
 
-      - name: Install dependencies
+
+      # ======================================================
+      # INSTALL DEPENDENCIES
+      # ======================================================
+
+      - name: Install Python dependencies
         shell: cmd
         run: |
           python -m pip install --upgrade "pip<24.1"
+
           python -m pip install -r requirements.txt
 
-      # -------------------------------------------------------
-      # VERIFY SOURCE CODE
-      # -------------------------------------------------------
 
-      - name: Verify Python files
+      # ======================================================
+      # VERIFY SOURCE FILES
+      # ======================================================
+
+      - name: Verify source code
         shell: cmd
         run: |
+
+          echo ==========================================
+          echo CHECKING SOURCE FILES
+          echo ==========================================
+
+          if not exist "app.py" (
+            echo ERROR: app.py is missing
+            exit /b 1
+          )
+
+          if not exist "config.py" (
+            echo ERROR: config.py is missing
+            exit /b 1
+          )
+
+          if not exist "database.py" (
+            echo ERROR: database.py is missing
+            exit /b 1
+          )
+
+          if not exist "security.py" (
+            echo ERROR: security.py is missing
+            exit /b 1
+          )
+
+          if not exist "ui.py" (
+            echo ERROR: ui.py is missing
+            exit /b 1
+          )
+
+          if not exist "requirements.txt" (
+            echo ERROR: requirements.txt is missing
+            exit /b 1
+          )
+
+          if not exist "installer.iss" (
+            echo ERROR: installer.iss is missing
+            exit /b 1
+          )
+
+          echo.
+          echo All required source files found.
+
+
+      # ======================================================
+      # PYTHON COMPILE TEST
+      # ======================================================
+
+      - name: Test Python source
+        shell: cmd
+        run: |
+
+          echo ==========================================
+          echo TESTING PYTHON SOURCE
+          echo ==========================================
+
           python -m py_compile app.py
+          if errorlevel 1 exit /b 1
+
           python -m py_compile config.py
+          if errorlevel 1 exit /b 1
+
           python -m py_compile database.py
+          if errorlevel 1 exit /b 1
+
           python -m py_compile security.py
+          if errorlevel 1 exit /b 1
+
           python -m py_compile ui.py
+          if errorlevel 1 exit /b 1
 
-      # -------------------------------------------------------
-      # BUILD WINDOWS APPLICATION
-      # -------------------------------------------------------
+          echo.
+          echo Python syntax test passed.
 
-      - name: Build executable
+
+      # ======================================================
+      # BUILD WINDOWS EXE
+      # ======================================================
+
+      - name: Build Windows application
         shell: cmd
         run: |
+
+          echo ==========================================
+          echo BUILDING ADVANCED NOTES
+          echo ==========================================
+
           pyinstaller ^
             --noconfirm ^
             --clean ^
@@ -85,169 +174,257 @@ jobs:
             --name AdvancedNotes ^
             app.py
 
-      # -------------------------------------------------------
-      # VERIFY EXE
-      # -------------------------------------------------------
-
-      - name: Verify executable
-        shell: cmd
-        run: |
-          if not exist "dist\AdvancedNotes\AdvancedNotes.exe" (
-            echo ERROR: AdvancedNotes.exe was not created.
+          if errorlevel 1 (
+            echo.
+            echo ERROR: PyInstaller build failed.
             exit /b 1
           )
 
           echo.
           echo ==========================================
-          echo WINDOWS APPLICATION BUILD SUCCESSFUL
+          echo PYINSTALLER BUILD SUCCESSFUL
           echo ==========================================
-          echo.
 
-      # -------------------------------------------------------
-      # FIND INNO SETUP
-      # -------------------------------------------------------
+
+      # ======================================================
+      # VERIFY EXE
+      # ======================================================
+
+      - name: Verify EXE
+        shell: powershell
+        run: |
+
+          Write-Host "=========================================="
+          Write-Host "VERIFYING WINDOWS EXE"
+          Write-Host "=========================================="
+
+          $exe = "dist\AdvancedNotes\AdvancedNotes.exe"
+
+          if (-not (Test-Path $exe)) {
+              Write-Host "ERROR: AdvancedNotes.exe was not created."
+              exit 1
+          }
+
+          $file = Get-Item $exe
+
+          Write-Host ""
+          Write-Host "EXE FOUND:"
+          Write-Host $file.FullName
+
+          Write-Host ""
+          Write-Host "EXE SIZE:"
+          Write-Host "$($file.Length) bytes"
+
+          Write-Host ""
+          Write-Host "EXE BUILD VERIFIED SUCCESSFULLY."
+
+
+      # ======================================================
+      # FIND EXISTING INNO SETUP
+      # ======================================================
 
       - name: Locate Inno Setup
         shell: powershell
         run: |
+
           Write-Host "=========================================="
           Write-Host "LOCATING INNO SETUP"
           Write-Host "=========================================="
 
-          $paths = @(
+          $possiblePaths = @(
               "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
               "C:\Program Files\Inno Setup 6\ISCC.exe"
           )
 
           $iscc = $null
 
-          foreach ($path in $paths) {
+          foreach ($path in $possiblePaths) {
+
+              Write-Host "Checking:"
+              Write-Host $path
+
               if (Test-Path $path) {
+
                   $iscc = $path
+
+                  Write-Host ""
+                  Write-Host "FOUND INNO SETUP:"
+                  Write-Host $iscc
+
                   break
               }
           }
 
           if (-not $iscc) {
+
+              Write-Host ""
+              Write-Host "Searching PATH for ISCC.exe..."
+
               $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
 
               if ($command) {
+
                   $iscc = $command.Source
+
+                  Write-Host ""
+                  Write-Host "FOUND INNO SETUP IN PATH:"
+                  Write-Host $iscc
               }
           }
 
           if (-not $iscc) {
-              Write-Host "Inno Setup was not found."
+
+              Write-Host ""
+              Write-Host "ERROR: Inno Setup compiler was not found."
               exit 1
           }
 
-          Write-Host "Inno Setup compiler found:"
+          Write-Host ""
+          Write-Host "=========================================="
+          Write-Host "INNO SETUP FOUND"
+          Write-Host "=========================================="
+
           Write-Host $iscc
 
           "ISCC_PATH=$iscc" | Out-File `
-              -FilePath $env:GITHUB_ENV `
-              -Encoding utf8 `
-              -Append
+            -FilePath $env:GITHUB_ENV `
+            -Encoding utf8 `
+            -Append
 
-      # -------------------------------------------------------
+
+      # ======================================================
       # BUILD INSTALLER
-      # -------------------------------------------------------
+      # ======================================================
 
       - name: Build Windows installer
         shell: powershell
         run: |
+
           Write-Host "=========================================="
           Write-Host "BUILDING WINDOWS INSTALLER"
           Write-Host "=========================================="
 
           if (-not $env:ISCC_PATH) {
-              Write-Host "ERROR: ISCC_PATH is not set."
+
+              Write-Host "ERROR: ISCC_PATH is empty."
               exit 1
           }
 
           if (-not (Test-Path $env:ISCC_PATH)) {
-              Write-Host "ERROR: Inno Setup compiler does not exist:"
+
+              Write-Host "ERROR: ISCC.exe does not exist:"
               Write-Host $env:ISCC_PATH
+
               exit 1
           }
 
-          Write-Host "Using Inno Setup:"
+          Write-Host ""
+          Write-Host "Using:"
           Write-Host $env:ISCC_PATH
+
+          Write-Host ""
+          Write-Host "Compiling installer.iss..."
 
           & $env:ISCC_PATH "installer.iss"
 
           if ($LASTEXITCODE -ne 0) {
-              Write-Host "ERROR: Inno Setup failed."
+
+              Write-Host ""
+              Write-Host "ERROR: Inno Setup compilation failed."
+
               exit $LASTEXITCODE
           }
 
+          Write-Host ""
           Write-Host "=========================================="
           Write-Host "INSTALLER BUILD SUCCESSFUL"
           Write-Host "=========================================="
 
-      # -------------------------------------------------------
+
+      # ======================================================
       # VERIFY INSTALLER
-      # -------------------------------------------------------
+      # ======================================================
 
       - name: Verify installer
         shell: powershell
         run: |
+
+          Write-Host "=========================================="
+          Write-Host "VERIFYING INSTALLER"
+          Write-Host "=========================================="
+
           $installer = "installer\AdvancedNotes-Setup.exe"
 
           if (-not (Test-Path $installer)) {
+
+              Write-Host ""
               Write-Host "ERROR: Installer was not created."
+              Write-Host "Expected:"
+              Write-Host $installer
+
               exit 1
           }
 
-          Write-Host "Installer successfully created:"
-          Write-Host $installer
+          $file = Get-Item $installer
 
-          $size = (Get-Item $installer).Length
+          Write-Host ""
+          Write-Host "INSTALLER FOUND:"
+          Write-Host $file.FullName
 
-          Write-Host "Installer size:"
-          Write-Host "$size bytes"
+          Write-Host ""
+          Write-Host "INSTALLER SIZE:"
+          Write-Host "$($file.Length) bytes"
 
-      # -------------------------------------------------------
+          Write-Host ""
+          Write-Host "INSTALLER VERIFIED SUCCESSFULLY."
+
+
+      # ======================================================
       # CREATE PORTABLE ZIP
-      # -------------------------------------------------------
+      # ======================================================
 
       - name: Create portable ZIP
         shell: powershell
         run: |
+
           Write-Host "=========================================="
-          Write-Host "CREATING PORTABLE ZIP"
+          Write-Host "CREATING PORTABLE VERSION"
           Write-Host "=========================================="
 
-          if (Test-Path "AdvancedNotes-Portable.zip") {
-              Remove-Item "AdvancedNotes-Portable.zip" -Force
+          $zip = "AdvancedNotes-Portable.zip"
+
+          if (Test-Path $zip) {
+
+              Remove-Item $zip -Force
           }
 
           Compress-Archive `
             -Path "dist\AdvancedNotes\*" `
-            -DestinationPath "AdvancedNotes-Portable.zip" `
+            -DestinationPath $zip `
             -Force
 
-          if (-not (Test-Path "AdvancedNotes-Portable.zip")) {
+          if (-not (Test-Path $zip)) {
+
+              Write-Host ""
               Write-Host "ERROR: Portable ZIP was not created."
+
               exit 1
           }
 
-          Write-Host "Portable ZIP created successfully."
+          $file = Get-Item $zip
 
-      # -------------------------------------------------------
-      # UPLOAD PORTABLE VERSION
-      # -------------------------------------------------------
+          Write-Host ""
+          Write-Host "PORTABLE ZIP CREATED:"
+          Write-Host $file.FullName
 
-      - name: Upload portable application
-        uses: actions/upload-artifact@v4
-        with:
-          name: AdvancedNotes-Portable
-          path: AdvancedNotes-Portable.zip
-          if-no-files-found: error
+          Write-Host ""
+          Write-Host "SIZE:"
+          Write-Host "$($file.Length) bytes"
 
-      # -------------------------------------------------------
+
+      # ======================================================
       # UPLOAD INSTALLER
-      # -------------------------------------------------------
+      # ======================================================
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
@@ -255,3 +432,44 @@ jobs:
           name: AdvancedNotes-Windows-Installer
           path: installer\AdvancedNotes-Setup.exe
           if-no-files-found: error
+
+
+      # ======================================================
+      # UPLOAD PORTABLE
+      # ======================================================
+
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdvancedNotes-Portable
+          path: AdvancedNotes-Portable.zip
+          if-no-files-found: error
+
+
+      # ======================================================
+      # FINAL BUILD SUMMARY
+      # ======================================================
+
+      - name: Build summary
+        shell: powershell
+        run: |
+
+          Write-Host ""
+          Write-Host "=========================================="
+          Write-Host "ADVANCED NOTES BUILD COMPLETE"
+          Write-Host "=========================================="
+
+          Write-Host ""
+          Write-Host "Windows Installer:"
+          Write-Host "installer\AdvancedNotes-Setup.exe"
+
+          Write-Host ""
+          Write-Host "Portable Version:"
+          Write-Host "AdvancedNotes-Portable.zip"
+
+          Write-Host ""
+          Write-Host "Supported target:"
+          Write-Host "Windows 7 / Windows 10 / Windows 11"
+
+          Write-Host ""
+          Write-Host "=========================================="
