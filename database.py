@@ -6,19 +6,36 @@ from security import hash_password, verify_password
 
 
 class Database:
+
     def __init__(self):
         self.database_path = get_database_path()
 
-        self.connection = sqlite3.connect(self.database_path)
+        self.connection = sqlite3.connect(
+            self.database_path
+        )
+
         self.connection.row_factory = sqlite3.Row
 
-        self.connection.execute("PRAGMA foreign_keys = ON")
-        self.connection.execute("PRAGMA journal_mode = WAL")
-        self.connection.execute("PRAGMA synchronous = NORMAL")
+        self.connection.execute(
+            "PRAGMA foreign_keys = ON"
+        )
+
+        self.connection.execute(
+            "PRAGMA journal_mode = WAL"
+        )
+
+        self.connection.execute(
+            "PRAGMA synchronous = NORMAL"
+        )
 
         self.create_tables()
 
+    # =========================================================
+    # DATABASE TABLES
+    # =========================================================
+
     def create_tables(self):
+
         self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -64,7 +81,12 @@ class Database:
 
         self.connection.commit()
 
+    # =========================================================
+    # USER REGISTRATION
+    # =========================================================
+
     def register_user(self, username, password):
+
         username = username.strip()
 
         if not username:
@@ -90,9 +112,12 @@ class Database:
 
         salt, password_hash = hash_password(password)
 
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         try:
+
             self.connection.execute(
                 """
                 INSERT INTO users
@@ -117,10 +142,19 @@ class Database:
             return True, "Account created successfully."
 
         except sqlite3.Error as error:
+
             self.connection.rollback()
-            return False, "Unable to create account: {}".format(error)
+
+            return False, (
+                "Unable to create account: {}".format(error)
+            )
+
+    # =========================================================
+    # USER LOGIN
+    # =========================================================
 
     def login_user(self, username, password):
+
         username = username.strip()
 
         user = self.connection.execute(
@@ -148,7 +182,12 @@ class Database:
             "created_at": user["created_at"]
         }
 
+    # =========================================================
+    # USER COUNT
+    # =========================================================
+
     def user_count(self):
+
         row = self.connection.execute(
             """
             SELECT COUNT(*) AS total
@@ -158,10 +197,23 @@ class Database:
 
         return row["total"]
 
-    def create_note(self, user_id, title, content):
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # =========================================================
+    # CREATE SHARED NOTE
+    # =========================================================
+
+    def create_note(
+        self,
+        user_id,
+        title,
+        content
+    ):
+
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         try:
+
             cursor = self.connection.execute(
                 """
                 INSERT INTO notes
@@ -188,13 +240,29 @@ class Database:
             return cursor.lastrowid
 
         except sqlite3.Error:
+
             self.connection.rollback()
+
             raise
 
-    def update_note(self, note_id, user_id, title, content):
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # =========================================================
+    # UPDATE SHARED NOTE
+    # =========================================================
+
+    def update_note(
+        self,
+        note_id,
+        user_id,
+        title,
+        content
+    ):
+
+        now = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
         try:
+
             cursor = self.connection.execute(
                 """
                 UPDATE notes
@@ -202,16 +270,13 @@ class Database:
                     title = ?,
                     content = ?,
                     updated_at = ?
-                WHERE
-                    id = ?
-                    AND user_id = ?
+                WHERE id = ?
                 """,
                 (
                     title,
                     content,
                     now,
-                    note_id,
-                    user_id
+                    note_id
                 )
             )
 
@@ -220,22 +285,29 @@ class Database:
             return cursor.rowcount > 0
 
         except sqlite3.Error:
+
             self.connection.rollback()
+
             raise
 
-    def delete_note(self, note_id, user_id):
+    # =========================================================
+    # DELETE SHARED NOTE
+    # =========================================================
+
+    def delete_note(
+        self,
+        note_id,
+        user_id
+    ):
+
         try:
+
             cursor = self.connection.execute(
                 """
                 DELETE FROM notes
-                WHERE
-                    id = ?
-                    AND user_id = ?
+                WHERE id = ?
                 """,
-                (
-                    note_id,
-                    user_id
-                )
+                (note_id,)
             )
 
             self.connection.commit()
@@ -243,76 +315,122 @@ class Database:
             return cursor.rowcount > 0
 
         except sqlite3.Error:
+
             self.connection.rollback()
+
             raise
 
-    def get_notes(self, user_id, search_text=""):
+    # =========================================================
+    # GET ALL SHARED NOTES
+    # =========================================================
+
+    def get_notes(
+        self,
+        user_id,
+        search_text=""
+    ):
+
         search_text = search_text.strip()
 
         if search_text:
+
             wildcard = "%" + search_text + "%"
 
             rows = self.connection.execute(
                 """
-                SELECT *
+                SELECT
+                    notes.*,
+                    users.username AS author
                 FROM notes
+
+                LEFT JOIN users
+                    ON users.id = notes.user_id
+
                 WHERE
-                    user_id = ?
-                    AND
-                    (
-                        title LIKE ?
-                        OR content LIKE ?
-                    )
-                ORDER BY updated_at DESC
+                    notes.title LIKE ?
+                    OR notes.content LIKE ?
+
+                ORDER BY
+                    notes.updated_at DESC
                 """,
                 (
-                    user_id,
                     wildcard,
                     wildcard
                 )
             ).fetchall()
 
         else:
+
             rows = self.connection.execute(
                 """
-                SELECT *
+                SELECT
+                    notes.*,
+                    users.username AS author
                 FROM notes
-                WHERE user_id = ?
-                ORDER BY updated_at DESC
-                """,
-                (user_id,)
+
+                LEFT JOIN users
+                    ON users.id = notes.user_id
+
+                ORDER BY
+                    notes.updated_at DESC
+                """
             ).fetchall()
 
         return rows
 
-    def get_note(self, note_id, user_id):
+    # =========================================================
+    # GET ONE SHARED NOTE
+    # =========================================================
+
+    def get_note(
+        self,
+        note_id,
+        user_id
+    ):
+
         return self.connection.execute(
             """
-            SELECT *
+            SELECT
+                notes.*,
+                users.username AS author
             FROM notes
-            WHERE
-                id = ?
-                AND user_id = ?
+
+            LEFT JOIN users
+                ON users.id = notes.user_id
+
+            WHERE notes.id = ?
             """,
-            (
-                note_id,
-                user_id
-            )
+            (note_id,)
         ).fetchone()
 
-    def note_count(self, user_id):
+    # =========================================================
+    # TOTAL SHARED NOTES
+    # =========================================================
+
+    def note_count(
+        self,
+        user_id
+    ):
+
         row = self.connection.execute(
             """
             SELECT COUNT(*) AS total
             FROM notes
-            WHERE user_id = ?
-            """,
-            (user_id,)
+            """
         ).fetchone()
 
         return row["total"]
 
-    def export_notes(self, user_id, file_path):
+    # =========================================================
+    # EXPORT ALL SHARED NOTES
+    # =========================================================
+
+    def export_notes(
+        self,
+        user_id,
+        file_path
+    ):
+
         notes = self.get_notes(user_id)
 
         with open(
@@ -321,16 +439,38 @@ class Database:
             encoding="utf-8"
         ) as file:
 
-            for index, note in enumerate(notes, 1):
-                file.write("=" * 70)
+            for index, note in enumerate(
+                notes,
+                1
+            ):
+
+                file.write(
+                    "=" * 70
+                )
+
                 file.write("\n")
-                file.write("NOTE {}\n".format(index))
-                file.write("=" * 70)
+
+                file.write(
+                    "NOTE {}\n".format(index)
+                )
+
+                file.write(
+                    "=" * 70
+                )
+
                 file.write("\n\n")
 
                 file.write(
                     "Title: {}\n".format(
                         note["title"]
+                    )
+                )
+
+                file.write(
+                    "Author: {}\n".format(
+                        note["author"]
+                        if note["author"]
+                        else "Unknown"
                     )
                 )
 
@@ -346,12 +486,26 @@ class Database:
                     )
                 )
 
-                file.write(note["content"])
-                file.write("\n\n")
+                file.write(
+                    note["content"]
+                )
+
+                file.write(
+                    "\n\n"
+                )
+
+    # =========================================================
+    # CLOSE DATABASE
+    # =========================================================
 
     def close(self):
+
         if self.connection:
+
             try:
+
                 self.connection.close()
+
             finally:
+
                 self.connection = None
