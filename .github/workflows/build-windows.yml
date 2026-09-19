@@ -1,1 +1,165 @@
+name: Build Advanced Notes for Windows
 
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+
+  build:
+
+    name: Build Windows 7/10/11 Application
+
+    runs-on: windows-2022
+
+    steps:
+
+      # -------------------------------------------------------
+      # CHECKOUT
+      # -------------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------------
+      # PYTHON
+      # -------------------------------------------------------
+
+      - name: Setup Python 3.8.10 x86
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8.10"
+          architecture: x86
+
+      # -------------------------------------------------------
+      # VERIFY PYTHON
+      # -------------------------------------------------------
+
+      - name: Verify Python
+        shell: cmd
+        run: |
+          python --version
+          python -c "import platform; print(platform.architecture())"
+
+      # -------------------------------------------------------
+      # INSTALL DEPENDENCIES
+      # -------------------------------------------------------
+
+      - name: Install dependencies
+        shell: cmd
+        run: |
+          python -m pip install --upgrade "pip<24.1"
+          python -m pip install -r requirements.txt
+
+      # -------------------------------------------------------
+      # VERIFY APPLICATION
+      # -------------------------------------------------------
+
+      - name: Verify Python files
+        shell: cmd
+        run: |
+          python -m py_compile app.py
+          python -m py_compile config.py
+          python -m py_compile database.py
+          python -m py_compile security.py
+          python -m py_compile ui.py
+
+      # -------------------------------------------------------
+      # BUILD EXE
+      # -------------------------------------------------------
+
+      - name: Build executable
+        shell: cmd
+        run: |
+          pyinstaller ^
+            --noconfirm ^
+            --clean ^
+            --windowed ^
+            --onedir ^
+            --name AdvancedNotes ^
+            app.py
+
+      # -------------------------------------------------------
+      # CHECK BUILD
+      # -------------------------------------------------------
+
+      - name: Verify executable
+        shell: cmd
+        run: |
+          if not exist "dist\AdvancedNotes\AdvancedNotes.exe" exit /b 1
+          echo EXE BUILD SUCCESSFUL
+
+      # -------------------------------------------------------
+      # INSTALL INNO SETUP
+      # -------------------------------------------------------
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          choco install innosetup --version=6.2.2 -y --no-progress
+
+      # -------------------------------------------------------
+      # BUILD INSTALLER
+      # -------------------------------------------------------
+
+      - name: Build installer
+        shell: cmd
+        run: |
+          set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+
+          if not exist "%ISCC%" (
+            echo Inno Setup compiler not found
+            exit /b 1
+          )
+
+          "%ISCC%" installer.iss
+
+      # -------------------------------------------------------
+      # VERIFY INSTALLER
+      # -------------------------------------------------------
+
+      - name: Verify installer
+        shell: cmd
+        run: |
+          if not exist "installer\AdvancedNotes-Setup.exe" exit /b 1
+          echo INSTALLER BUILD SUCCESSFUL
+
+      # -------------------------------------------------------
+      # ZIP PORTABLE VERSION
+      # -------------------------------------------------------
+
+      - name: Create portable ZIP
+        shell: powershell
+        run: |
+          Compress-Archive `
+            -Path "dist\AdvancedNotes\*" `
+            -DestinationPath "AdvancedNotes-Portable.zip" `
+            -Force
+
+      # -------------------------------------------------------
+      # UPLOAD PORTABLE APP
+      # -------------------------------------------------------
+
+      - name: Upload portable application
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdvancedNotes-Portable
+          path: AdvancedNotes-Portable.zip
+          if-no-files-found: error
+
+      # -------------------------------------------------------
+      # UPLOAD INSTALLER
+      # -------------------------------------------------------
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdvancedNotes-Windows-Installer
+          path: installer\AdvancedNotes-Setup.exe
+          if-no-files-found: error
