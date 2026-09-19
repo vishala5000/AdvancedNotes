@@ -1,3 +1,4 @@
+```yaml
 name: Build Advanced Notes for Windows
 
 on:
@@ -14,7 +15,7 @@ jobs:
 
   build:
 
-    name: Build Windows 7/10/11 Application
+    name: Build Windows 7 10 11 Application
 
     runs-on: windows-2022
 
@@ -48,7 +49,7 @@ jobs:
           python -c "import platform; print(platform.architecture())"
 
       # -------------------------------------------------------
-      # INSTALL DEPENDENCIES
+      # INSTALL PYTHON DEPENDENCIES
       # -------------------------------------------------------
 
       - name: Install dependencies
@@ -58,7 +59,7 @@ jobs:
           python -m pip install -r requirements.txt
 
       # -------------------------------------------------------
-      # VERIFY APPLICATION
+      # VERIFY SOURCE CODE
       # -------------------------------------------------------
 
       - name: Verify Python files
@@ -71,7 +72,7 @@ jobs:
           python -m py_compile ui.py
 
       # -------------------------------------------------------
-      # BUILD EXE
+      # BUILD WINDOWS APPLICATION
       # -------------------------------------------------------
 
       - name: Build executable
@@ -86,64 +87,156 @@ jobs:
             app.py
 
       # -------------------------------------------------------
-      # CHECK BUILD
+      # VERIFY EXE
       # -------------------------------------------------------
 
       - name: Verify executable
         shell: cmd
         run: |
-          if not exist "dist\AdvancedNotes\AdvancedNotes.exe" exit /b 1
-          echo EXE BUILD SUCCESSFUL
+          if not exist "dist\AdvancedNotes\AdvancedNotes.exe" (
+            echo ERROR: AdvancedNotes.exe was not created.
+            exit /b 1
+          )
+
+          echo.
+          echo ==========================================
+          echo WINDOWS APPLICATION BUILD SUCCESSFUL
+          echo ==========================================
+          echo.
 
       # -------------------------------------------------------
-      # INSTALL INNO SETUP
+      # FIND INNO SETUP
       # -------------------------------------------------------
 
-      - name: Install Inno Setup
+      - name: Locate Inno Setup
         shell: powershell
         run: |
-          choco install innosetup --version=6.2.2 -y --no-progress
+          Write-Host "=========================================="
+          Write-Host "LOCATING INNO SETUP"
+          Write-Host "=========================================="
+
+          $paths = @(
+              "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+              "C:\Program Files\Inno Setup 6\ISCC.exe"
+          )
+
+          $iscc = $null
+
+          foreach ($path in $paths) {
+              if (Test-Path $path) {
+                  $iscc = $path
+                  break
+              }
+          }
+
+          if (-not $iscc) {
+              $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+
+              if ($command) {
+                  $iscc = $command.Source
+              }
+          }
+
+          if (-not $iscc) {
+              Write-Host "Inno Setup was not found."
+              exit 1
+          }
+
+          Write-Host "Inno Setup compiler found:"
+          Write-Host $iscc
+
+          "ISCC_PATH=$iscc" | Out-File `
+              -FilePath $env:GITHUB_ENV `
+              -Encoding utf8 `
+              -Append
 
       # -------------------------------------------------------
       # BUILD INSTALLER
       # -------------------------------------------------------
 
-      - name: Build installer
-        shell: cmd
+      - name: Build Windows installer
+        shell: powershell
         run: |
-          set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          Write-Host "=========================================="
+          Write-Host "BUILDING WINDOWS INSTALLER"
+          Write-Host "=========================================="
 
-          if not exist "%ISCC%" (
-            echo Inno Setup compiler not found
-            exit /b 1
-          )
+          if (-not $env:ISCC_PATH) {
+              Write-Host "ERROR: ISCC_PATH is not set."
+              exit 1
+          }
 
-          "%ISCC%" installer.iss
+          if (-not (Test-Path $env:ISCC_PATH)) {
+              Write-Host "ERROR: Inno Setup compiler does not exist:"
+              Write-Host $env:ISCC_PATH
+              exit 1
+          }
+
+          Write-Host "Using Inno Setup:"
+          Write-Host $env:ISCC_PATH
+
+          & $env:ISCC_PATH "installer.iss"
+
+          if ($LASTEXITCODE -ne 0) {
+              Write-Host "ERROR: Inno Setup failed."
+              exit $LASTEXITCODE
+          }
+
+          Write-Host "=========================================="
+          Write-Host "INSTALLER BUILD SUCCESSFUL"
+          Write-Host "=========================================="
 
       # -------------------------------------------------------
       # VERIFY INSTALLER
       # -------------------------------------------------------
 
       - name: Verify installer
-        shell: cmd
+        shell: powershell
         run: |
-          if not exist "installer\AdvancedNotes-Setup.exe" exit /b 1
-          echo INSTALLER BUILD SUCCESSFUL
+          $installer = "installer\AdvancedNotes-Setup.exe"
+
+          if (-not (Test-Path $installer)) {
+              Write-Host "ERROR: Installer was not created."
+              exit 1
+          }
+
+          Write-Host "Installer successfully created:"
+          Write-Host $installer
+
+          $size = (Get-Item $installer).Length
+
+          Write-Host "Installer size:"
+          Write-Host "$size bytes"
 
       # -------------------------------------------------------
-      # ZIP PORTABLE VERSION
+      # CREATE PORTABLE ZIP
       # -------------------------------------------------------
 
       - name: Create portable ZIP
         shell: powershell
         run: |
+          Write-Host "=========================================="
+          Write-Host "CREATING PORTABLE ZIP"
+          Write-Host "=========================================="
+
+          if (Test-Path "AdvancedNotes-Portable.zip") {
+              Remove-Item "AdvancedNotes-Portable.zip" -Force
+          }
+
           Compress-Archive `
             -Path "dist\AdvancedNotes\*" `
             -DestinationPath "AdvancedNotes-Portable.zip" `
             -Force
 
+          if (-not (Test-Path "AdvancedNotes-Portable.zip")) {
+              Write-Host "ERROR: Portable ZIP was not created."
+              exit 1
+          }
+
+          Write-Host "Portable ZIP created successfully."
+
       # -------------------------------------------------------
-      # UPLOAD PORTABLE APP
+      # UPLOAD PORTABLE VERSION
       # -------------------------------------------------------
 
       - name: Upload portable application
@@ -163,3 +256,4 @@ jobs:
           name: AdvancedNotes-Windows-Installer
           path: installer\AdvancedNotes-Setup.exe
           if-no-files-found: error
+```
