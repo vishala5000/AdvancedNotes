@@ -14,6 +14,37 @@ from config import (
 
 class NotesApplication:
 
+    # =========================================================
+    # COLORS
+    # =========================================================
+
+    BG = "#F4F6F8"
+    WHITE = "#FFFFFF"
+
+    SIDEBAR = "#172033"
+    SIDEBAR_LIGHT = "#202B3D"
+
+    TEXT = "#172033"
+    MUTED = "#667085"
+    BORDER = "#D0D5DD"
+
+    PRIMARY = "#2563EB"
+    PRIMARY_HOVER = "#1D4ED8"
+
+    SUCCESS = "#16A34A"
+    SUCCESS_HOVER = "#15803D"
+
+    DANGER = "#DC2626"
+    DANGER_HOVER = "#B91C1C"
+
+    WARNING = "#D97706"
+
+    INPUT_BG = "#FFFFFF"
+
+    # =========================================================
+    # CONSTRUCTOR
+    # =========================================================
+
     def __init__(
         self,
         root,
@@ -26,7 +57,23 @@ class NotesApplication:
         self.current_user = None
         self.current_note_id = None
 
-        self.configure_root()
+        self.original_title = ""
+        self.original_content = ""
+
+        self.is_editing = False
+
+        self.search_var = None
+
+        self.title_entry = None
+        self.content_text = None
+        self.notes_tree = None
+
+        self.status_label = None
+        self.date_label = None
+        self.character_label = None
+
+        self.setup_window()
+        self.setup_styles()
 
         self.show_login_screen()
 
@@ -34,7 +81,7 @@ class NotesApplication:
     # WINDOW
     # =========================================================
 
-    def configure_root(self):
+    def setup_window(self):
 
         self.root.title(
             "{} {}".format(
@@ -51,15 +98,22 @@ class NotesApplication:
         )
 
         self.root.minsize(
-            900,
-            600
+            950,
+            620
         )
 
         self.root.configure(
-            bg="#eef2f7"
+            bg=self.BG
         )
 
-        self.setup_styles()
+        try:
+            self.root.iconname(APP_NAME)
+        except Exception:
+            pass
+
+    # =========================================================
+    # STYLES
+    # =========================================================
 
     def setup_styles(self):
 
@@ -71,72 +125,138 @@ class NotesApplication:
             pass
 
         style.configure(
-            "Title.TLabel",
-            font=("Segoe UI", 24, "bold")
-        )
-
-        style.configure(
-            "Subtitle.TLabel",
-            font=("Segoe UI", 11)
-        )
-
-        style.configure(
-            "Header.TLabel",
-            font=("Segoe UI", 15, "bold")
-        )
-
-        style.configure(
-            "Primary.TButton",
-            font=("Segoe UI", 10, "bold"),
-            padding=8
-        )
-
-        style.configure(
-            "TButton",
-            padding=7
-        )
-
-        style.configure(
             "Treeview",
-            rowheight=32,
+            background=self.WHITE,
+            foreground=self.TEXT,
+            fieldbackground=self.WHITE,
+            borderwidth=0,
+            rowheight=38,
             font=("Segoe UI", 10)
         )
 
         style.configure(
             "Treeview.Heading",
-            font=("Segoe UI", 10, "bold")
+            background="#F2F4F7",
+            foreground=self.TEXT,
+            font=("Segoe UI", 9, "bold"),
+            relief="flat"
         )
+
+        style.map(
+            "Treeview",
+            background=[
+                ("selected", "#DBEAFE")
+            ],
+            foreground=[
+                ("selected", "#1E3A8A")
+            ]
+        )
+
+        style.configure(
+            "Vertical.TScrollbar",
+            troughcolor="#F2F4F7",
+            background="#98A2B3",
+            borderwidth=0,
+            arrowsize=12
+        )
+
+    # =========================================================
+    # HELPERS
+    # =========================================================
 
     def clear_window(self):
 
         for widget in self.root.winfo_children():
             widget.destroy()
 
+    def create_button(
+        self,
+        parent,
+        text,
+        command,
+        background,
+        foreground="white",
+        width=None
+    ):
+
+        button = tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=background,
+            fg=foreground,
+            activebackground=background,
+            activeforeground=foreground,
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+            padx=14,
+            pady=8
+        )
+
+        if width:
+            button.config(
+                width=width
+            )
+
+        return button
+
+    def create_label(
+        self,
+        parent,
+        text,
+        size=10,
+        bold=False,
+        foreground=None,
+        background=None
+    ):
+
+        return tk.Label(
+            parent,
+            text=text,
+            bg=background if background else self.WHITE,
+            fg=foreground if foreground else self.TEXT,
+            font=(
+                "Segoe UI",
+                size,
+                "bold" if bold else "normal"
+            )
+        )
+
     # =========================================================
-    # LOGIN
+    # LOGIN SCREEN
     # =========================================================
 
     def show_login_screen(self):
 
         self.clear_window()
 
-        container = tk.Frame(
-            self.root,
-            bg="#eef2f7"
+        self.root.title(
+            "{} - Login".format(APP_NAME)
         )
 
-        container.pack(
+        outer = tk.Frame(
+            self.root,
+            bg=self.BG
+        )
+
+        outer.pack(
             fill="both",
             expand=True
         )
 
+        # -----------------------------------------------------
+        # CENTER CARD
+        # -----------------------------------------------------
+
         card = tk.Frame(
-            container,
-            bg="white",
-            padx=45,
-            pady=40,
+            outer,
+            bg=self.WHITE,
             bd=1,
-            relief="solid"
+            relief="solid",
+            padx=50,
+            pady=40
         )
 
         card.place(
@@ -145,35 +265,45 @@ class NotesApplication:
             anchor="center"
         )
 
-        title = tk.Label(
+        # Logo/title
+
+        tk.Label(
             card,
-            text=APP_NAME,
-            bg="white",
-            fg="#172033",
-            font=("Segoe UI", 25, "bold")
-        )
-
-        title.pack(
-            pady=(0, 5)
-        )
-
-        subtitle = tk.Label(
-            card,
-            text="Secure personal notes",
-            bg="white",
-            fg="#667085",
-            font=("Segoe UI", 11)
-        )
-
-        subtitle.pack(
-            pady=(0, 30)
+            text="NOTES",
+            bg=self.PRIMARY,
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            width=8,
+            height=2
+        ).pack(
+            pady=(0, 20)
         )
 
         tk.Label(
             card,
+            text="Welcome Back",
+            bg=self.WHITE,
+            fg=self.TEXT,
+            font=("Segoe UI", 24, "bold")
+        ).pack()
+
+        tk.Label(
+            card,
+            text="Sign in to access your personal notes",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 10)
+        ).pack(
+            pady=(5, 30)
+        )
+
+        # Username
+
+        tk.Label(
+            card,
             text="Username",
-            bg="white",
-            fg="#344054",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
         ).pack(
             anchor="w"
@@ -181,74 +311,120 @@ class NotesApplication:
 
         self.login_username = tk.Entry(
             card,
-            width=35,
+            width=38,
             font=("Segoe UI", 11),
+            bg=self.WHITE,
+            fg=self.TEXT,
             relief="solid",
             bd=1
         )
 
         self.login_username.pack(
-            pady=(6, 15),
-            ipady=7
+            fill="x",
+            pady=(6, 18),
+            ipady=8
         )
+
+        # Password
 
         tk.Label(
             card,
             text="Password",
-            bg="white",
-            fg="#344054",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
         ).pack(
             anchor="w"
         )
 
-        self.login_password = tk.Entry(
+        password_frame = tk.Frame(
             card,
-            width=35,
+            bg=self.WHITE
+        )
+
+        password_frame.pack(
+            fill="x",
+            pady=(6, 20)
+        )
+
+        self.login_password = tk.Entry(
+            password_frame,
             font=("Segoe UI", 11),
+            bg=self.WHITE,
+            fg=self.TEXT,
             show="*",
             relief="solid",
             bd=1
         )
 
         self.login_password.pack(
-            pady=(6, 20),
-            ipady=7
-        )
-
-        login_button = tk.Button(
-            card,
-            text="LOGIN",
-            command=self.login,
-            bg="#2563eb",
-            fg="white",
-            activebackground="#1d4ed8",
-            activeforeground="white",
-            font=("Segoe UI", 10, "bold"),
-            relief="flat",
-            cursor="hand2",
-            width=31
-        )
-
-        login_button.pack(
-            pady=(0, 10),
+            side="left",
+            fill="x",
+            expand=True,
             ipady=8
         )
 
-        register_button = tk.Button(
-            card,
-            text="CREATE NEW ACCOUNT",
-            command=self.show_register_screen,
-            bg="white",
-            fg="#2563eb",
-            activebackground="white",
-            activeforeground="#1d4ed8",
-            font=("Segoe UI", 10, "bold"),
-            relief="flat",
-            cursor="hand2"
+        self.login_show_password = tk.BooleanVar(
+            value=False
         )
 
-        register_button.pack()
+        tk.Checkbutton(
+            password_frame,
+            text="Show",
+            variable=self.login_show_password,
+            command=self.toggle_login_password,
+            bg=self.WHITE,
+            activebackground=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8),
+            relief="flat"
+        ).pack(
+            side="right",
+            padx=(8, 0)
+        )
+
+        # Login
+
+        self.create_button(
+            card,
+            "LOGIN",
+            self.login,
+            self.PRIMARY
+        ).pack(
+            fill="x",
+            pady=(0, 12)
+        )
+
+        # Register
+
+        tk.Button(
+            card,
+            text="Create a new account",
+            command=self.show_register_screen,
+            bg=self.WHITE,
+            fg=self.PRIMARY,
+            activebackground=self.WHITE,
+            activeforeground=self.PRIMARY_HOVER,
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold")
+        ).pack()
+
+        tk.Label(
+            card,
+            text="Your notes are stored locally on this PC.",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8)
+        ).pack(
+            pady=(25, 0)
+        )
+
+        self.login_username.bind(
+            "<Return>",
+            lambda event: self.login_password.focus_set()
+        )
 
         self.login_password.bind(
             "<Return>",
@@ -258,30 +434,67 @@ class NotesApplication:
         self.login_username.focus_set()
 
     # =========================================================
-    # REGISTER
+    # PASSWORD
+    # =========================================================
+
+    def toggle_login_password(self):
+
+        if self.login_show_password.get():
+
+            self.login_password.config(
+                show=""
+            )
+
+        else:
+
+            self.login_password.config(
+                show="*"
+            )
+
+    def toggle_register_password(self):
+
+        show = ""
+
+        if not self.register_show_password.get():
+            show = "*"
+
+        self.register_password.config(
+            show=show
+        )
+
+        self.register_confirm.config(
+            show=show
+        )
+
+    # =========================================================
+    # REGISTER SCREEN
     # =========================================================
 
     def show_register_screen(self):
 
         self.clear_window()
 
-        container = tk.Frame(
-            self.root,
-            bg="#eef2f7"
+        self.root.title(
+            "{} - Create Account".format(APP_NAME)
         )
 
-        container.pack(
+        outer = tk.Frame(
+            self.root,
+            bg=self.BG
+        )
+
+        outer.pack(
             fill="both",
             expand=True
         )
 
         card = tk.Frame(
-            container,
-            bg="white",
-            padx=45,
-            pady=35,
+            outer,
+            bg=self.WHITE,
             bd=1,
-            relief="solid"
+            relief="solid",
+            padx=50,
+            pady=35
         )
 
         card.place(
@@ -293,28 +506,28 @@ class NotesApplication:
         tk.Label(
             card,
             text="Create Account",
-            bg="white",
-            fg="#172033",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 24, "bold")
-        ).pack(
-            pady=(0, 6)
-        )
+        ).pack()
 
         tk.Label(
             card,
-            text="Your account and notes remain saved on this PC.",
-            bg="white",
-            fg="#667085",
+            text="Create your secure local notes account",
+            bg=self.WHITE,
+            fg=self.MUTED,
             font=("Segoe UI", 10)
         ).pack(
-            pady=(0, 25)
+            pady=(5, 25)
         )
+
+        # Username
 
         tk.Label(
             card,
             text="Username",
-            bg="white",
-            fg="#344054",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
         ).pack(
             anchor="w"
@@ -322,22 +535,27 @@ class NotesApplication:
 
         self.register_username = tk.Entry(
             card,
-            width=35,
+            width=38,
             font=("Segoe UI", 11),
+            bg=self.WHITE,
+            fg=self.TEXT,
             relief="solid",
             bd=1
         )
 
         self.register_username.pack(
+            fill="x",
             pady=(6, 15),
-            ipady=7
+            ipady=8
         )
+
+        # Password
 
         tk.Label(
             card,
             text="Password",
-            bg="white",
-            fg="#344054",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
         ).pack(
             anchor="w"
@@ -345,23 +563,27 @@ class NotesApplication:
 
         self.register_password = tk.Entry(
             card,
-            width=35,
             font=("Segoe UI", 11),
+            bg=self.WHITE,
+            fg=self.TEXT,
             show="*",
             relief="solid",
             bd=1
         )
 
         self.register_password.pack(
+            fill="x",
             pady=(6, 15),
-            ipady=7
+            ipady=8
         )
+
+        # Confirm
 
         tk.Label(
             card,
             text="Confirm Password",
-            bg="white",
-            fg="#344054",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 10, "bold")
         ).pack(
             anchor="w"
@@ -369,47 +591,72 @@ class NotesApplication:
 
         self.register_confirm = tk.Entry(
             card,
-            width=35,
             font=("Segoe UI", 11),
+            bg=self.WHITE,
+            fg=self.TEXT,
             show="*",
             relief="solid",
             bd=1
         )
 
         self.register_confirm.pack(
-            pady=(6, 20),
-            ipady=7
-        )
-
-        tk.Button(
-            card,
-            text="CREATE ACCOUNT",
-            command=self.register,
-            bg="#16a34a",
-            fg="white",
-            activebackground="#15803d",
-            activeforeground="white",
-            font=("Segoe UI", 10, "bold"),
-            relief="flat",
-            cursor="hand2",
-            width=31
-        ).pack(
-            pady=(0, 10),
+            fill="x",
+            pady=(6, 8),
             ipady=8
         )
 
+        self.register_show_password = tk.BooleanVar(
+            value=False
+        )
+
+        tk.Checkbutton(
+            card,
+            text="Show password",
+            variable=self.register_show_password,
+            command=self.toggle_register_password,
+            bg=self.WHITE,
+            activebackground=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8),
+            relief="flat"
+        ).pack(
+            anchor="w",
+            pady=(0, 18)
+        )
+
+        # Create
+
+        self.create_button(
+            card,
+            "CREATE ACCOUNT",
+            self.register,
+            self.SUCCESS
+        ).pack(
+            fill="x",
+            pady=(0, 8)
+        )
+
+        # Back
+
         tk.Button(
             card,
-            text="BACK TO LOGIN",
+            text="← Back to Login",
             command=self.show_login_screen,
-            bg="white",
-            fg="#2563eb",
-            font=("Segoe UI", 10, "bold"),
+            bg=self.WHITE,
+            fg=self.PRIMARY,
+            activebackground=self.WHITE,
+            activeforeground=self.PRIMARY_HOVER,
             relief="flat",
-            cursor="hand2"
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold")
         ).pack()
 
         self.register_username.focus_set()
+
+    # =========================================================
+    # REGISTER
+    # =========================================================
 
     def register(self):
 
@@ -418,31 +665,42 @@ class NotesApplication:
         confirmation = self.register_confirm.get()
 
         if not username:
-            messagebox.showerror(
-                "Registration",
+
+            messagebox.showwarning(
+                "Create Account",
                 "Please enter a username."
             )
+
+            self.register_username.focus_set()
             return
 
         if len(username) > 50:
-            messagebox.showerror(
-                "Registration",
-                "Username must not exceed 50 characters."
+
+            messagebox.showwarning(
+                "Create Account",
+                "Username cannot exceed 50 characters."
             )
+
             return
 
         if len(password) < 6:
-            messagebox.showerror(
-                "Registration",
+
+            messagebox.showwarning(
+                "Create Account",
                 "Password must contain at least 6 characters."
             )
+
+            self.register_password.focus_set()
             return
 
         if password != confirmation:
+
             messagebox.showerror(
-                "Registration",
+                "Create Account",
                 "Passwords do not match."
             )
+
+            self.register_confirm.focus_set()
             return
 
         success, message = self.database.register_user(
@@ -453,15 +711,15 @@ class NotesApplication:
         if not success:
 
             messagebox.showerror(
-                "Registration",
+                "Create Account",
                 message
             )
 
             return
 
         messagebox.showinfo(
-            "Registration",
-            "Account created successfully.\n\nYou can now log in."
+            "Account Created",
+            "Your account was created successfully."
         )
 
         self.show_login_screen()
@@ -474,7 +732,7 @@ class NotesApplication:
         self.login_password.focus_set()
 
     # =========================================================
-    # LOGIN ACTION
+    # LOGIN
     # =========================================================
 
     def login(self):
@@ -482,13 +740,24 @@ class NotesApplication:
         username = self.login_username.get().strip()
         password = self.login_password.get()
 
-        if not username or not password:
+        if not username:
 
             messagebox.showwarning(
                 "Login",
-                "Please enter your username and password."
+                "Please enter your username."
             )
 
+            self.login_username.focus_set()
+            return
+
+        if not password:
+
+            messagebox.showwarning(
+                "Login",
+                "Please enter your password."
+            )
+
+            self.login_password.focus_set()
             return
 
         user = self.database.login_user(
@@ -499,9 +768,16 @@ class NotesApplication:
         if user is None:
 
             messagebox.showerror(
-                "Login",
+                "Login Failed",
                 "Invalid username or password."
             )
+
+            self.login_password.selection_range(
+                0,
+                tk.END
+            )
+
+            self.login_password.focus_set()
 
             return
 
@@ -510,16 +786,27 @@ class NotesApplication:
         self.show_main_screen()
 
     # =========================================================
-    # MAIN SCREEN
+    # MAIN APPLICATION
     # =========================================================
 
     def show_main_screen(self):
 
         self.clear_window()
 
+        self.root.title(
+            "{} - {}".format(
+                APP_NAME,
+                self.current_user["username"]
+            )
+        )
+
+        # =====================================================
+        # ROOT
+        # =====================================================
+
         main = tk.Frame(
             self.root,
-            bg="#eef2f7"
+            bg=self.BG
         )
 
         main.pack(
@@ -527,149 +814,300 @@ class NotesApplication:
             expand=True
         )
 
-        # -----------------------------------------------------
-        # TOP BAR
-        # -----------------------------------------------------
+        # =====================================================
+        # SIDEBAR
+        # =====================================================
 
-        top = tk.Frame(
+        sidebar = tk.Frame(
             main,
-            bg="#172033",
-            height=65
+            bg=self.SIDEBAR,
+            width=235
         )
 
-        top.pack(
-            fill="x"
+        sidebar.pack(
+            side="left",
+            fill="y"
+        )
+
+        sidebar.pack_propagate(
+            False
+        )
+
+        # Logo
+
+        logo_frame = tk.Frame(
+            sidebar,
+            bg=self.SIDEBAR
+        )
+
+        logo_frame.pack(
+            fill="x",
+            padx=18,
+            pady=(22, 15)
         )
 
         tk.Label(
-            top,
-            text=APP_NAME,
-            bg="#172033",
+            logo_frame,
+            text="N",
+            bg=self.PRIMARY,
             fg="white",
-            font=("Segoe UI", 18, "bold")
-        ).pack(
-            side="left",
-            padx=20
-        )
-
-        user_frame = tk.Frame(
-            top,
-            bg="#172033"
-        )
-
-        user_frame.pack(
-            side="right",
-            padx=15
-        )
-
-        tk.Label(
-            user_frame,
-            text="Logged in: {}".format(
-                self.current_user["username"]
-            ),
-            bg="#172033",
-            fg="#d0d5dd",
-            font=("Segoe UI", 10)
-        ).pack(
-            side="left",
-            padx=(0, 15)
-        )
-
-        tk.Button(
-            user_frame,
-            text="LOGOUT",
-            command=self.logout,
-            bg="#344054",
-            fg="white",
-            activebackground="#475467",
-            activeforeground="white",
-            relief="flat",
-            font=("Segoe UI", 9, "bold"),
-            cursor="hand2"
+            font=("Segoe UI", 16, "bold"),
+            width=3,
+            height=1
         ).pack(
             side="left"
         )
 
-        # -----------------------------------------------------
-        # BODY
-        # -----------------------------------------------------
-
-        body = tk.Frame(
-            main,
-            bg="#eef2f7"
+        tk.Label(
+            logo_frame,
+            text="Advanced Notes",
+            bg=self.SIDEBAR,
+            fg="white",
+            font=("Segoe UI", 12, "bold")
+        ).pack(
+            side="left",
+            padx=10
         )
 
-        body.pack(
-            fill="both",
-            expand=True,
-            padx=15,
+        # User
+
+        user_frame = tk.Frame(
+            sidebar,
+            bg=self.SIDEBAR_LIGHT,
+            padx=12,
+            pady=12
+        )
+
+        user_frame.pack(
+            fill="x",
+            padx=12,
+            pady=(0, 20)
+        )
+
+        tk.Label(
+            user_frame,
+            text="SIGNED IN AS",
+            bg=self.SIDEBAR_LIGHT,
+            fg="#98A2B3",
+            font=("Segoe UI", 7, "bold")
+        ).pack(
+            anchor="w"
+        )
+
+        tk.Label(
+            user_frame,
+            text=self.current_user["username"],
+            bg=self.SIDEBAR_LIGHT,
+            fg="white",
+            font=("Segoe UI", 11, "bold")
+        ).pack(
+            anchor="w",
+            pady=(4, 0)
+        )
+
+        # Navigation title
+
+        tk.Label(
+            sidebar,
+            text="NOTES",
+            bg=self.SIDEBAR,
+            fg="#98A2B3",
+            font=("Segoe UI", 8, "bold")
+        ).pack(
+            anchor="w",
+            padx=20,
+            pady=(0, 8)
+        )
+
+        # New note
+
+        self.create_button(
+            sidebar,
+            "+  NEW NOTE",
+            self.new_note,
+            self.PRIMARY
+        ).pack(
+            fill="x",
+            padx=12,
+            pady=(0, 8)
+        )
+
+        # Refresh
+
+        self.create_button(
+            sidebar,
+            "↻  REFRESH",
+            self.refresh_notes,
+            self.SIDEBAR_LIGHT
+        ).pack(
+            fill="x",
+            padx=12,
+            pady=2
+        )
+
+        # Export
+
+        self.create_button(
+            sidebar,
+            "↓  EXPORT NOTES",
+            self.export_notes,
+            self.SIDEBAR_LIGHT
+        ).pack(
+            fill="x",
+            padx=12,
+            pady=2
+        )
+
+        # Bottom
+
+        bottom = tk.Frame(
+            sidebar,
+            bg=self.SIDEBAR
+        )
+
+        bottom.pack(
+            side="bottom",
+            fill="x",
+            padx=12,
             pady=15
         )
 
-        # -----------------------------------------------------
-        # LEFT PANEL
-        # -----------------------------------------------------
-
-        left = tk.Frame(
-            body,
-            bg="white",
-            bd=1,
-            relief="solid",
-            width=390
+        self.create_button(
+            bottom,
+            "LOGOUT",
+            self.logout,
+            self.DANGER
+        ).pack(
+            fill="x"
         )
 
-        left.pack(
+        tk.Label(
+            bottom,
+            text="Version {}".format(APP_VERSION),
+            bg=self.SIDEBAR,
+            fg="#667085",
+            font=("Segoe UI", 8)
+        ).pack(
+            pady=(10, 0)
+        )
+
+        # =====================================================
+        # MAIN CONTENT
+        # =====================================================
+
+        content = tk.Frame(
+            main,
+            bg=self.BG
+        )
+
+        content.pack(
             side="left",
-            fill="y",
-            padx=(0, 10)
+            fill="both",
+            expand=True
         )
 
-        left.pack_propagate(False)
+        # =====================================================
+        # HEADER
+        # =====================================================
 
         header = tk.Frame(
-            left,
-            bg="white"
+            content,
+            bg=self.WHITE,
+            height=70,
+            bd=1,
+            relief="solid"
         )
 
         header.pack(
-            fill="x",
-            padx=15,
-            pady=15
+            fill="x"
+        )
+
+        header.pack_propagate(
+            False
         )
 
         tk.Label(
             header,
             text="My Notes",
-            bg="white",
-            fg="#172033",
-            font=("Segoe UI", 17, "bold")
+            bg=self.WHITE,
+            fg=self.TEXT,
+            font=("Segoe UI", 20, "bold")
         ).pack(
-            side="left"
+            side="left",
+            padx=22
         )
 
-        self.note_count_label = tk.Label(
+        self.header_count = tk.Label(
             header,
             text="",
-            bg="white",
-            fg="#667085",
+            bg=self.WHITE,
+            fg=self.MUTED,
             font=("Segoe UI", 9)
         )
 
-        self.note_count_label.pack(
-            side="right"
+        self.header_count.pack(
+            side="left"
+        )
+
+        # =====================================================
+        # WORK AREA
+        # =====================================================
+
+        work = tk.Frame(
+            content,
+            bg=self.BG
+        )
+
+        work.pack(
+            fill="both",
+            expand=True,
+            padx=14,
+            pady=14
+        )
+
+        # =====================================================
+        # NOTES LIST
+        # =====================================================
+
+        list_panel = tk.Frame(
+            work,
+            bg=self.WHITE,
+            bd=1,
+            relief="solid",
+            width=370
+        )
+
+        list_panel.pack(
+            side="left",
+            fill="y",
+            padx=(0, 12)
+        )
+
+        list_panel.pack_propagate(
+            False
         )
 
         # Search
 
         search_frame = tk.Frame(
-            left,
-            bg="white"
+            list_panel,
+            bg=self.WHITE
         )
 
         search_frame.pack(
             fill="x",
-            padx=15,
-            pady=(0, 10)
+            padx=14,
+            pady=14
+        )
+
+        tk.Label(
+            search_frame,
+            text="SEARCH",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8, "bold")
+        ).pack(
+            anchor="w"
         )
 
         self.search_var = tk.StringVar()
@@ -677,6 +1115,8 @@ class NotesApplication:
         self.search_entry = tk.Entry(
             search_frame,
             textvariable=self.search_var,
+            bg="#F9FAFB",
+            fg=self.TEXT,
             font=("Segoe UI", 10),
             relief="solid",
             bd=1
@@ -684,7 +1124,8 @@ class NotesApplication:
 
         self.search_entry.pack(
             fill="x",
-            ipady=6
+            pady=(5, 0),
+            ipady=7
         )
 
         self.search_var.trace_add(
@@ -695,20 +1136,21 @@ class NotesApplication:
         # Tree
 
         tree_frame = tk.Frame(
-            left,
-            bg="white"
+            list_panel,
+            bg=self.WHITE
         )
 
         tree_frame.pack(
             fill="both",
             expand=True,
-            padx=15,
-            pady=(0, 15)
+            padx=14,
+            pady=(0, 14)
         )
 
         scrollbar = ttk.Scrollbar(
             tree_frame,
-            orient="vertical"
+            orient="vertical",
+            style="Vertical.TScrollbar"
         )
 
         scrollbar.pack(
@@ -723,8 +1165,8 @@ class NotesApplication:
                 "date"
             ),
             show="headings",
-            yscrollcommand=scrollbar.set,
-            selectmode="browse"
+            selectmode="browse",
+            yscrollcommand=scrollbar.set
         )
 
         scrollbar.config(
@@ -733,23 +1175,25 @@ class NotesApplication:
 
         self.notes_tree.heading(
             "title",
-            text="Title"
+            text="NOTE"
         )
 
         self.notes_tree.heading(
             "date",
-            text="Updated"
+            text="UPDATED"
         )
 
         self.notes_tree.column(
             "title",
-            width=220,
+            width=225,
+            minwidth=150,
             anchor="w"
         )
 
         self.notes_tree.column(
             "date",
-            width=120,
+            width=105,
+            minwidth=90,
             anchor="center"
         )
 
@@ -763,64 +1207,83 @@ class NotesApplication:
             self.select_note
         )
 
-        # -----------------------------------------------------
-        # RIGHT PANEL
-        # -----------------------------------------------------
+        self.notes_tree.bind(
+            "<Double-1>",
+            self.select_note
+        )
 
-        right = tk.Frame(
-            body,
-            bg="white",
+        # =====================================================
+        # EDITOR
+        # =====================================================
+
+        editor = tk.Frame(
+            work,
+            bg=self.WHITE,
             bd=1,
             relief="solid"
         )
 
-        right.pack(
+        editor.pack(
             side="left",
             fill="both",
             expand=True
         )
 
-        editor_header = tk.Frame(
-            right,
-            bg="white"
+        # Editor top
+
+        editor_top = tk.Frame(
+            editor,
+            bg=self.WHITE
         )
 
-        editor_header.pack(
+        editor_top.pack(
             fill="x",
             padx=20,
-            pady=15
+            pady=(17, 10)
         )
 
-        self.editor_title_label = tk.Label(
-            editor_header,
-            text="Create a New Note",
-            bg="white",
-            fg="#172033",
+        self.editor_heading = tk.Label(
+            editor_top,
+            text="New Note",
+            bg=self.WHITE,
+            fg=self.TEXT,
             font=("Segoe UI", 17, "bold")
         )
 
-        self.editor_title_label.pack(
+        self.editor_heading.pack(
             side="left"
         )
 
-        # -----------------------------------------------------
-        # TITLE
-        # -----------------------------------------------------
+        self.unsaved_label = tk.Label(
+            editor_top,
+            text="",
+            bg=self.WHITE,
+            fg=self.WARNING,
+            font=("Segoe UI", 9, "bold")
+        )
+
+        self.unsaved_label.pack(
+            side="right"
+        )
+
+        # Title
 
         tk.Label(
-            right,
-            text="Title",
-            bg="white",
-            fg="#344054",
-            font=("Segoe UI", 10, "bold")
+            editor,
+            text="TITLE",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8, "bold")
         ).pack(
             anchor="w",
             padx=20
         )
 
         self.title_entry = tk.Entry(
-            right,
-            font=("Segoe UI", 12),
+            editor,
+            bg=self.WHITE,
+            fg=self.TEXT,
+            font=("Segoe UI", 14, "bold"),
             relief="solid",
             bd=1
         )
@@ -828,58 +1291,83 @@ class NotesApplication:
         self.title_entry.pack(
             fill="x",
             padx=20,
-            pady=(6, 15),
-            ipady=7
+            pady=(5, 15),
+            ipady=8
         )
 
-        # -----------------------------------------------------
-        # CONTENT
-        # -----------------------------------------------------
+        # Content
 
-        tk.Label(
-            right,
-            text="Note",
-            bg="white",
-            fg="#344054",
-            font=("Segoe UI", 10, "bold")
-        ).pack(
-            anchor="w",
+        content_label_frame = tk.Frame(
+            editor,
+            bg=self.WHITE
+        )
+
+        content_label_frame.pack(
+            fill="x",
             padx=20
         )
 
-        content_frame = tk.Frame(
-            right,
-            bg="white"
+        tk.Label(
+            content_label_frame,
+            text="CONTENT",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8, "bold")
+        ).pack(
+            side="left"
         )
 
-        content_frame.pack(
+        self.character_label = tk.Label(
+            content_label_frame,
+            text="0 characters",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8)
+        )
+
+        self.character_label.pack(
+            side="right"
+        )
+
+        text_frame = tk.Frame(
+            editor,
+            bg=self.WHITE
+        )
+
+        text_frame.pack(
             fill="both",
             expand=True,
             padx=20,
-            pady=(6, 10)
+            pady=(5, 10)
         )
 
-        content_scroll = ttk.Scrollbar(
-            content_frame,
-            orient="vertical"
+        text_scroll = ttk.Scrollbar(
+            text_frame,
+            orient="vertical",
+            style="Vertical.TScrollbar"
         )
 
-        content_scroll.pack(
+        text_scroll.pack(
             side="right",
             fill="y"
         )
 
         self.content_text = tk.Text(
-            content_frame,
+            text_frame,
             wrap="word",
+            undo=True,
             font=("Segoe UI", 11),
+            bg="#FCFCFD",
+            fg=self.TEXT,
+            insertbackground=self.TEXT,
             relief="solid",
             bd=1,
-            undo=True,
-            yscrollcommand=content_scroll.set
+            padx=12,
+            pady=12,
+            yscrollcommand=text_scroll.set
         )
 
-        content_scroll.config(
+        text_scroll.config(
             command=self.content_text.yview
         )
 
@@ -888,108 +1376,166 @@ class NotesApplication:
             expand=True
         )
 
-        # -----------------------------------------------------
-        # DATE
-        # -----------------------------------------------------
+        self.title_entry.bind(
+            "<KeyRelease>",
+            self.editor_changed
+        )
+
+        self.content_text.bind(
+            "<KeyRelease>",
+            self.editor_changed
+        )
+
+        # Date
 
         self.date_label = tk.Label(
-            right,
-            text="",
-            bg="white",
-            fg="#667085",
-            font=("Segoe UI", 9)
+            editor,
+            text="New note",
+            bg=self.WHITE,
+            fg=self.MUTED,
+            font=("Segoe UI", 8)
         )
 
         self.date_label.pack(
             anchor="w",
             padx=20,
-            pady=(0, 8)
+            pady=(0, 10)
         )
 
-        # -----------------------------------------------------
+        # =====================================================
         # BUTTON BAR
-        # -----------------------------------------------------
+        # =====================================================
 
-        buttons = tk.Frame(
-            right,
-            bg="white"
+        button_bar = tk.Frame(
+            editor,
+            bg="#F9FAFB",
+            bd=1,
+            relief="solid"
         )
 
-        buttons.pack(
-            fill="x",
-            padx=20,
-            pady=(0, 18)
+        button_bar.pack(
+            fill="x"
         )
 
-        tk.Button(
-            buttons,
-            text="NEW NOTE",
-            command=self.new_note,
-            bg="#344054",
-            fg="white",
-            activebackground="#475467",
-            activeforeground="white",
-            relief="flat",
-            font=("Segoe UI", 9, "bold"),
-            cursor="hand2"
-        ).pack(
+        button_left = tk.Frame(
+            button_bar,
+            bg="#F9FAFB"
+        )
+
+        button_left.pack(
             side="left",
-            padx=(0, 8),
-            ipadx=8,
-            ipady=5
+            padx=14,
+            pady=12
         )
 
-        tk.Button(
-            buttons,
-            text="SAVE NOTE",
-            command=self.save_note,
-            bg="#2563eb",
-            fg="white",
-            activebackground="#1d4ed8",
-            activeforeground="white",
-            relief="flat",
-            font=("Segoe UI", 9, "bold"),
-            cursor="hand2"
-        ).pack(
+        self.new_button = self.create_button(
+            button_left,
+            "＋ NEW",
+            self.new_note,
+            self.SIDEBAR_LIGHT
+        )
+
+        self.new_button.pack(
             side="left",
-            padx=(0, 8),
-            ipadx=8,
-            ipady=5
+            padx=(0, 7)
         )
 
-        tk.Button(
-            buttons,
-            text="DELETE",
-            command=self.delete_note,
-            bg="#dc2626",
-            fg="white",
-            activebackground="#b91c1c",
-            activeforeground="white",
-            relief="flat",
-            font=("Segoe UI", 9, "bold"),
-            cursor="hand2"
-        ).pack(
+        self.save_button = self.create_button(
+            button_left,
+            "✓ SAVE",
+            self.save_note,
+            self.PRIMARY
+        )
+
+        self.save_button.pack(
             side="left",
-            padx=(0, 8),
-            ipadx=8,
-            ipady=5
+            padx=(0, 7)
         )
 
-        tk.Button(
-            buttons,
-            text="EXPORT ALL",
-            command=self.export_notes,
-            bg="#16a34a",
-            fg="white",
-            activebackground="#15803d",
-            activeforeground="white",
-            relief="flat",
-            font=("Segoe UI", 9, "bold"),
-            cursor="hand2"
-        ).pack(
+        self.cancel_button = self.create_button(
+            button_left,
+            "↶ CANCEL",
+            self.cancel_editing,
+            "#667085"
+        )
+
+        self.cancel_button.pack(
+            side="left"
+        )
+
+        button_right = tk.Frame(
+            button_bar,
+            bg="#F9FAFB"
+        )
+
+        button_right.pack(
             side="right",
-            ipadx=8,
-            ipady=5
+            padx=14,
+            pady=12
+        )
+
+        self.delete_button = self.create_button(
+            button_right,
+            "DELETE",
+            self.delete_note,
+            self.DANGER
+        )
+
+        self.delete_button.pack(
+            side="right"
+        )
+
+        # =====================================================
+        # STATUS
+        # =====================================================
+
+        status = tk.Frame(
+            content,
+            bg=self.BG,
+            height=28
+        )
+
+        status.pack(
+            fill="x"
+        )
+
+        status.pack_propagate(
+            False
+        )
+
+        self.status_label = tk.Label(
+            status,
+            text="Ready",
+            bg=self.BG,
+            fg=self.MUTED,
+            font=("Segoe UI", 8)
+        )
+
+        self.status_label.pack(
+            side="left",
+            padx=18
+        )
+
+        # Keyboard shortcuts
+
+        self.root.bind(
+            "<Control-n>",
+            lambda event: self.new_note()
+        )
+
+        self.root.bind(
+            "<Control-s>",
+            lambda event: self.save_note()
+        )
+
+        self.root.bind(
+            "<Control-f>",
+            lambda event: self.focus_search()
+        )
+
+        self.root.bind(
+            "<Escape>",
+            lambda event: self.cancel_editing()
         )
 
         self.load_notes()
@@ -999,10 +1545,13 @@ class NotesApplication:
         self.search_entry.focus_set()
 
     # =========================================================
-    # NOTES
+    # LOAD NOTES
     # =========================================================
 
     def load_notes(self):
+
+        if self.notes_tree is None:
+            return
 
         for item in self.notes_tree.get_children():
 
@@ -1010,7 +1559,10 @@ class NotesApplication:
                 item
             )
 
-        search = self.search_var.get()
+        search = ""
+
+        if self.search_var is not None:
+            search = self.search_var.get()
 
         notes = self.database.get_notes(
             self.current_user["id"],
@@ -1021,48 +1573,103 @@ class NotesApplication:
 
             title = note["title"]
 
-            if len(title) > 32:
-                title = title[:29] + "..."
+            display_title = title
 
-            updated = note["updated_at"]
+            if len(display_title) > 34:
+                display_title = (
+                    display_title[:31] +
+                    "..."
+                )
 
-            if len(updated) >= 16:
-                updated = updated[:16]
+            date_value = note["updated_at"]
+
+            if len(date_value) >= 16:
+                date_value = date_value[:16]
 
             self.notes_tree.insert(
                 "",
                 "end",
                 iid=str(note["id"]),
                 values=(
-                    title,
-                    updated
+                    display_title,
+                    date_value
                 )
             )
 
-        total = len(notes)
+        count = self.database.note_count(
+            self.current_user["id"]
+        )
 
-        self.note_count_label.config(
-            text="{} note{}".format(
-                total,
-                "" if total == 1 else "s"
+        if hasattr(
+            self,
+            "header_count"
+        ):
+
+            self.header_count.config(
+                text="{} total note{}".format(
+                    count,
+                    "" if count == 1 else "s"
+                )
+            )
+
+        self.update_status(
+            "{} note{} available".format(
+                count,
+                "" if count == 1 else "s"
             )
         )
+
+    # =========================================================
+    # SEARCH
+    # =========================================================
 
     def search_notes(
         self,
         *args
     ):
 
-        if hasattr(
-            self,
-            "notes_tree"
-        ):
-            self.load_notes()
+        if self.notes_tree is None:
+            return
+
+        self.load_notes()
+
+    def focus_search(self):
+
+        if self.search_entry:
+
+            self.search_entry.focus_set()
+
+            self.search_entry.selection_range(
+                0,
+                tk.END
+            )
+
+    # =========================================================
+    # SELECT NOTE
+    # =========================================================
 
     def select_note(
         self,
         event=None
     ):
+
+        if self.has_unsaved_changes():
+
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                "You have unsaved changes.\n\n"
+                "Save them before opening another note?"
+            )
+
+            if answer is None:
+                return
+
+            if answer:
+
+                if not self.save_note(
+                    show_message=False
+                ):
+                    return
 
         selection = self.notes_tree.selection()
 
@@ -1070,10 +1677,13 @@ class NotesApplication:
             return
 
         try:
+
             note_id = int(
                 selection[0]
             )
+
         except ValueError:
+
             return
 
         note = self.database.get_note(
@@ -1084,11 +1694,25 @@ class NotesApplication:
         if not note:
             return
 
-        self.current_note_id = note_id
-
-        self.editor_title_label.config(
-            text="Edit Note"
+        self.load_note_into_editor(
+            note
         )
+
+    # =========================================================
+    # LOAD NOTE INTO EDITOR
+    # =========================================================
+
+    def load_note_into_editor(
+        self,
+        note
+    ):
+
+        self.current_note_id = note["id"]
+
+        self.is_editing = True
+
+        self.original_title = note["title"]
+        self.original_content = note["content"]
 
         self.title_entry.delete(
             0,
@@ -1110,20 +1734,63 @@ class NotesApplication:
             note["content"]
         )
 
+        self.editor_heading.config(
+            text="Edit Note"
+        )
+
         self.date_label.config(
-            text="Created: {}    Updated: {}".format(
+            text="Created: {}    •    Updated: {}".format(
                 note["created_at"],
                 note["updated_at"]
             )
         )
 
+        self.unsaved_label.config(
+            text=""
+        )
+
+        self.update_character_count()
+
+        self.update_status(
+            "Opened note: {}".format(
+                note["title"]
+            )
+        )
+
+        self.title_entry.focus_set()
+
+    # =========================================================
+    # NEW NOTE
+    # =========================================================
+
     def new_note(self):
+
+        if self.title_entry is not None:
+
+            if self.has_unsaved_changes():
+
+                answer = messagebox.askyesnocancel(
+                    "Unsaved Changes",
+                    "You have unsaved changes.\n\n"
+                    "Save them before creating a new note?"
+                )
+
+                if answer is None:
+                    return
+
+                if answer:
+
+                    if not self.save_note(
+                        show_message=False
+                    ):
+                        return
 
         self.current_note_id = None
 
-        self.editor_title_label.config(
-            text="Create a New Note"
-        )
+        self.is_editing = False
+
+        self.original_title = ""
+        self.original_content = ""
 
         self.title_entry.delete(
             0,
@@ -1135,20 +1802,120 @@ class NotesApplication:
             tk.END
         )
 
+        self.editor_heading.config(
+            text="New Note"
+        )
+
         self.date_label.config(
-            text="New note"
+            text="New note — not saved yet"
+        )
+
+        self.unsaved_label.config(
+            text=""
+        )
+
+        self.update_character_count()
+
+        if self.notes_tree:
+
+            try:
+
+                self.notes_tree.selection_remove(
+                    self.notes_tree.selection()
+                )
+
+            except Exception:
+                pass
+
+        self.update_status(
+            "Ready to create a new note"
         )
 
         self.title_entry.focus_set()
 
-        try:
-            self.notes_tree.selection_remove(
-                self.notes_tree.selection()
-            )
-        except Exception:
-            pass
+    # =========================================================
+    # EDITOR CHANGES
+    # =========================================================
 
-    def save_note(self):
+    def editor_changed(
+        self,
+        event=None
+    ):
+
+        self.update_character_count()
+
+        if self.has_unsaved_changes():
+
+            self.unsaved_label.config(
+                text="● Unsaved changes"
+            )
+
+            self.update_status(
+                "You have unsaved changes"
+            )
+
+        else:
+
+            self.unsaved_label.config(
+                text=""
+            )
+
+    def has_unsaved_changes(self):
+
+        if self.title_entry is None:
+            return False
+
+        current_title = self.title_entry.get()
+
+        current_content = self.content_text.get(
+            "1.0",
+            "end-1c"
+        )
+
+        if self.current_note_id is None:
+
+            return bool(
+                current_title.strip()
+                or current_content.strip()
+            )
+
+        return (
+            current_title != self.original_title
+            or
+            current_content != self.original_content
+        )
+
+    # =========================================================
+    # CHARACTER COUNT
+    # =========================================================
+
+    def update_character_count(self):
+
+        if self.content_text is None:
+            return
+
+        content = self.content_text.get(
+            "1.0",
+            "end-1c"
+        )
+
+        count = len(content)
+
+        self.character_label.config(
+            text="{} character{}".format(
+                count,
+                "" if count == 1 else "s"
+            )
+        )
+
+    # =========================================================
+    # SAVE NOTE
+    # =========================================================
+
+    def save_note(
+        self,
+        show_message=True
+    ):
 
         title = self.title_entry.get().strip()
 
@@ -1159,49 +1926,64 @@ class NotesApplication:
 
         if not title:
 
-            messagebox.showwarning(
-                "Save Note",
-                "Please enter a note title."
-            )
+            if show_message:
+
+                messagebox.showwarning(
+                    "Save Note",
+                    "Please enter a title."
+                )
 
             self.title_entry.focus_set()
 
-            return
+            return False
 
         if len(title) > MAX_NOTE_TITLE_LENGTH:
 
-            messagebox.showwarning(
-                "Save Note",
-                "Title must not exceed {} characters.".format(
-                    MAX_NOTE_TITLE_LENGTH
-                )
-            )
+            if show_message:
 
-            return
+                messagebox.showwarning(
+                    "Save Note",
+                    "The title cannot exceed {} characters.".format(
+                        MAX_NOTE_TITLE_LENGTH
+                    )
+                )
+
+            return False
 
         if not content:
 
-            messagebox.showwarning(
-                "Save Note",
-                "Please enter some note content."
-            )
+            if show_message:
+
+                messagebox.showwarning(
+                    "Save Note",
+                    "Please enter some note content."
+                )
 
             self.content_text.focus_set()
 
-            return
+            return False
+
+        # -----------------------------------------------------
+        # CREATE
+        # -----------------------------------------------------
 
         if self.current_note_id is None:
 
-            self.database.create_note(
+            note_id = self.database.create_note(
                 self.current_user["id"],
                 title,
                 content
             )
 
-            messagebox.showinfo(
-                "Saved",
-                "Note saved successfully."
-            )
+            self.current_note_id = note_id
+
+            self.is_editing = True
+
+            message = "Note saved successfully."
+
+        # -----------------------------------------------------
+        # UPDATE
+        # -----------------------------------------------------
 
         else:
 
@@ -1214,50 +1996,160 @@ class NotesApplication:
 
             if not success:
 
-                messagebox.showerror(
-                    "Save Note",
-                    "The note could not be updated."
-                )
+                if show_message:
 
-                return
+                    messagebox.showerror(
+                        "Save Note",
+                        "The note could not be updated."
+                    )
 
-            messagebox.showinfo(
-                "Saved",
-                "Note updated successfully."
-            )
+                return False
+
+            message = "Note updated successfully."
+
+        # -----------------------------------------------------
+        # UPDATE ORIGINAL VALUES
+        # -----------------------------------------------------
+
+        self.original_title = title
+        self.original_content = content
+
+        self.unsaved_label.config(
+            text=""
+        )
 
         self.load_notes()
 
-        self.select_note_by_title(
-            title
+        self.select_note_after_save()
+
+        self.update_status(
+            message
         )
 
-    def select_note_by_title(
-        self,
-        title
-    ):
+        if show_message:
 
-        for item in self.notes_tree.get_children():
-
-            values = self.notes_tree.item(
-                item,
-                "values"
+            messagebox.showinfo(
+                "Saved",
+                message
             )
 
-            if values and values[0] == title:
-                self.notes_tree.selection_set(
-                    item
+        return True
+
+    # =========================================================
+    # SELECT AFTER SAVE
+    # =========================================================
+
+    def select_note_after_save(self):
+
+        if not self.current_note_id:
+            return
+
+        note = self.database.get_note(
+            self.current_note_id,
+            self.current_user["id"]
+        )
+
+        if not note:
+            return
+
+        self.load_note_into_editor(
+            note
+        )
+
+        try:
+
+            self.notes_tree.selection_set(
+                str(self.current_note_id)
+            )
+
+            self.notes_tree.focus(
+                str(self.current_note_id)
+            )
+
+            self.notes_tree.see(
+                str(self.current_note_id)
+            )
+
+        except Exception:
+            pass
+
+    # =========================================================
+    # CANCEL
+    # =========================================================
+
+    def cancel_editing(self):
+
+        if not self.has_unsaved_changes():
+
+            if self.current_note_id:
+
+                note = self.database.get_note(
+                    self.current_note_id,
+                    self.current_user["id"]
                 )
 
-                self.notes_tree.focus(
-                    item
+                if note:
+
+                    self.load_note_into_editor(
+                        note
+                    )
+
+            else:
+
+                self.new_note()
+
+            return
+
+        answer = messagebox.askyesno(
+            "Cancel Changes",
+            "Discard all unsaved changes?"
+        )
+
+        if not answer:
+            return
+
+        if self.current_note_id:
+
+            note = self.database.get_note(
+                self.current_note_id,
+                self.current_user["id"]
+            )
+
+            if note:
+
+                self.load_note_into_editor(
+                    note
                 )
 
-                self.notes_tree.see(
-                    item
+                self.update_status(
+                    "Changes discarded"
                 )
 
-                break
+        else:
+
+            self.title_entry.delete(
+                0,
+                tk.END
+            )
+
+            self.content_text.delete(
+                "1.0",
+                tk.END
+            )
+
+            self.update_character_count()
+
+            self.unsaved_label.config(
+                text=""
+            )
+
+            self.update_status(
+                "New note cleared"
+            )
+
+    # =========================================================
+    # DELETE
+    # =========================================================
 
     def delete_note(self):
 
@@ -1265,14 +2157,36 @@ class NotesApplication:
 
             messagebox.showwarning(
                 "Delete Note",
-                "Please select a note first."
+                "Select a saved note before deleting."
             )
+
+            return
+
+        note = self.database.get_note(
+            self.current_note_id,
+            self.current_user["id"]
+        )
+
+        if not note:
+
+            messagebox.showerror(
+                "Delete Note",
+                "The selected note could not be found."
+            )
+
+            self.load_notes()
+            self.new_note()
 
             return
 
         answer = messagebox.askyesno(
             "Delete Note",
-            "Are you sure you want to permanently delete this note?"
+            "Delete this note permanently?\n\n"
+            "\"{}\"\n\n"
+            "This action cannot be undone.".format(
+                note["title"]
+            ),
+            icon="warning"
         )
 
         if not answer:
@@ -1292,14 +2206,50 @@ class NotesApplication:
 
             return
 
-        messagebox.showinfo(
-            "Delete Note",
-            "Note deleted successfully."
-        )
+        self.current_note_id = None
 
         self.load_notes()
 
         self.new_note()
+
+        self.update_status(
+            "Note deleted successfully"
+        )
+
+        messagebox.showinfo(
+            "Deleted",
+            "The note was permanently deleted."
+        )
+
+    # =========================================================
+    # REFRESH
+    # =========================================================
+
+    def refresh_notes(self):
+
+        if self.has_unsaved_changes():
+
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                "You have unsaved changes.\n\n"
+                "Save them before refreshing?"
+            )
+
+            if answer is None:
+                return
+
+            if answer:
+
+                if not self.save_note(
+                    show_message=False
+                ):
+                    return
+
+        self.load_notes()
+
+        self.update_status(
+            "Notes refreshed"
+        )
 
     # =========================================================
     # EXPORT
@@ -1314,26 +2264,26 @@ class NotesApplication:
         if count == 0:
 
             messagebox.showinfo(
-                "Export",
-                "You do not have any notes to export."
+                "Export Notes",
+                "There are no notes to export."
             )
 
             return
 
         path = filedialog.asksaveasfilename(
-            title="Export Notes",
+            title="Export All Notes",
             defaultextension=".txt",
             filetypes=[
                 (
-                    "Text files",
+                    "Text Files",
                     "*.txt"
                 ),
                 (
-                    "All files",
+                    "All Files",
                     "*.*"
                 )
             ],
-            initialfile="my_notes.txt"
+            initialfile="My-Notes.txt"
         )
 
         if not path:
@@ -1346,18 +2296,40 @@ class NotesApplication:
                 path
             )
 
+            self.update_status(
+                "All notes exported successfully"
+            )
+
             messagebox.showinfo(
-                "Export",
-                "All notes were exported successfully."
+                "Export Complete",
+                "All {} note{} exported successfully.".format(
+                    count,
+                    "" if count == 1 else "s"
+                )
             )
 
         except Exception as error:
 
             messagebox.showerror(
-                "Export",
-                "Export failed:\n{}".format(
+                "Export Failed",
+                "Could not export notes.\n\n{}".format(
                     error
                 )
+            )
+
+    # =========================================================
+    # STATUS
+    # =========================================================
+
+    def update_status(
+        self,
+        text
+    ):
+
+        if self.status_label:
+
+            self.status_label.config(
+                text=text
             )
 
     # =========================================================
@@ -1366,9 +2338,27 @@ class NotesApplication:
 
     def logout(self):
 
+        if self.has_unsaved_changes():
+
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                "You have unsaved changes.\n\n"
+                "Save them before logging out?"
+            )
+
+            if answer is None:
+                return
+
+            if answer:
+
+                if not self.save_note(
+                    show_message=False
+                ):
+                    return
+
         answer = messagebox.askyesno(
             "Logout",
-            "Do you want to log out?"
+            "Are you sure you want to log out?"
         )
 
         if not answer:
@@ -1380,13 +2370,33 @@ class NotesApplication:
         self.show_login_screen()
 
     # =========================================================
-    # CLOSE
+    # CLOSE APPLICATION
     # =========================================================
 
     def close(self):
 
+        if self.has_unsaved_changes():
+
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                "You have unsaved changes.\n\n"
+                "Save before closing?"
+            )
+
+            if answer is None:
+                return
+
+            if answer:
+
+                if not self.save_note(
+                    show_message=False
+                ):
+                    return
+
         try:
+
             self.database.close()
+
         except Exception:
             pass
 
