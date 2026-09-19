@@ -45,11 +45,7 @@ class NotesApplication:
     # CONSTRUCTOR
     # =========================================================
 
-    def __init__(
-        self,
-        root,
-        database
-    ):
+    def __init__(self, root, database):
 
         self.root = root
         self.database = database
@@ -72,8 +68,21 @@ class NotesApplication:
         self.date_label = None
         self.character_label = None
 
+        self.save_button = None
+        self.header_save_button = None
+        self.cancel_button = None
+        self.delete_button = None
+
+        self.editor_heading = None
+        self.unsaved_label = None
+
         self.setup_window()
         self.setup_styles()
+
+        self.root.protocol(
+            "WM_DELETE_WINDOW",
+            self.close
+        )
 
         self.show_login_screen()
 
@@ -98,8 +107,8 @@ class NotesApplication:
         )
 
         self.root.minsize(
-            950,
-            620
+            1000,
+            680
         )
 
         self.root.configure(
@@ -202,28 +211,6 @@ class NotesApplication:
 
         return button
 
-    def create_label(
-        self,
-        parent,
-        text,
-        size=10,
-        bold=False,
-        foreground=None,
-        background=None
-    ):
-
-        return tk.Label(
-            parent,
-            text=text,
-            bg=background if background else self.WHITE,
-            fg=foreground if foreground else self.TEXT,
-            font=(
-                "Segoe UI",
-                size,
-                "bold" if bold else "normal"
-            )
-        )
-
     # =========================================================
     # LOGIN SCREEN
     # =========================================================
@@ -246,10 +233,6 @@ class NotesApplication:
             expand=True
         )
 
-        # -----------------------------------------------------
-        # CENTER CARD
-        # -----------------------------------------------------
-
         card = tk.Frame(
             outer,
             bg=self.WHITE,
@@ -264,8 +247,6 @@ class NotesApplication:
             rely=0.5,
             anchor="center"
         )
-
-        # Logo/title
 
         tk.Label(
             card,
@@ -297,8 +278,6 @@ class NotesApplication:
             pady=(5, 30)
         )
 
-        # Username
-
         tk.Label(
             card,
             text="Username",
@@ -324,8 +303,6 @@ class NotesApplication:
             pady=(6, 18),
             ipady=8
         )
-
-        # Password
 
         tk.Label(
             card,
@@ -383,8 +360,6 @@ class NotesApplication:
             padx=(8, 0)
         )
 
-        # Login
-
         self.create_button(
             card,
             "LOGIN",
@@ -394,8 +369,6 @@ class NotesApplication:
             fill="x",
             pady=(0, 12)
         )
-
-        # Register
 
         tk.Button(
             card,
@@ -440,13 +413,10 @@ class NotesApplication:
     def toggle_login_password(self):
 
         if self.login_show_password.get():
-
             self.login_password.config(
                 show=""
             )
-
         else:
-
             self.login_password.config(
                 show="*"
             )
@@ -521,8 +491,6 @@ class NotesApplication:
             pady=(5, 25)
         )
 
-        # Username
-
         tk.Label(
             card,
             text="Username",
@@ -549,8 +517,6 @@ class NotesApplication:
             ipady=8
         )
 
-        # Password
-
         tk.Label(
             card,
             text="Password",
@@ -576,8 +542,6 @@ class NotesApplication:
             pady=(6, 15),
             ipady=8
         )
-
-        # Confirm
 
         tk.Label(
             card,
@@ -624,8 +588,6 @@ class NotesApplication:
             pady=(0, 18)
         )
 
-        # Create
-
         self.create_button(
             card,
             "CREATE ACCOUNT",
@@ -635,8 +597,6 @@ class NotesApplication:
             fill="x",
             pady=(0, 8)
         )
-
-        # Back
 
         tk.Button(
             card,
@@ -703,10 +663,23 @@ class NotesApplication:
             self.register_confirm.focus_set()
             return
 
-        success, message = self.database.register_user(
-            username,
-            password
-        )
+        try:
+
+            success, message = self.database.register_user(
+                username,
+                password
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Create Account",
+                "Could not create account.\n\n{}".format(
+                    error
+                )
+            )
+
+            return
 
         if not success:
 
@@ -760,10 +733,23 @@ class NotesApplication:
             self.login_password.focus_set()
             return
 
-        user = self.database.login_user(
-            username,
-            password
-        )
+        try:
+
+            user = self.database.login_user(
+                username,
+                password
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Login",
+                "Could not access the local database.\n\n{}".format(
+                    error
+                )
+            )
+
+            return
 
         if user is None:
 
@@ -800,10 +786,6 @@ class NotesApplication:
             )
         )
 
-        # =====================================================
-        # ROOT
-        # =====================================================
-
         main = tk.Frame(
             self.root,
             bg=self.BG
@@ -832,8 +814,6 @@ class NotesApplication:
         sidebar.pack_propagate(
             False
         )
-
-        # Logo
 
         logo_frame = tk.Frame(
             sidebar,
@@ -869,8 +849,6 @@ class NotesApplication:
             padx=10
         )
 
-        # User
-
         user_frame = tk.Frame(
             sidebar,
             bg=self.SIDEBAR_LIGHT,
@@ -905,8 +883,6 @@ class NotesApplication:
             pady=(4, 0)
         )
 
-        # Navigation title
-
         tk.Label(
             sidebar,
             text="NOTES",
@@ -919,8 +895,6 @@ class NotesApplication:
             pady=(0, 8)
         )
 
-        # New note
-
         self.create_button(
             sidebar,
             "+  NEW NOTE",
@@ -931,8 +905,6 @@ class NotesApplication:
             padx=12,
             pady=(0, 8)
         )
-
-        # Refresh
 
         self.create_button(
             sidebar,
@@ -945,8 +917,6 @@ class NotesApplication:
             pady=2
         )
 
-        # Export
-
         self.create_button(
             sidebar,
             "↓  EXPORT NOTES",
@@ -957,8 +927,6 @@ class NotesApplication:
             padx=12,
             pady=2
         )
-
-        # Bottom
 
         bottom = tk.Frame(
             sidebar,
@@ -992,7 +960,7 @@ class NotesApplication:
         )
 
         # =====================================================
-        # MAIN CONTENT
+        # CONTENT
         # =====================================================
 
         content = tk.Frame(
@@ -1049,6 +1017,31 @@ class NotesApplication:
             side="left"
         )
 
+        # -----------------------------------------------------
+        # HEADER SAVE BUTTON
+        # -----------------------------------------------------
+
+        self.header_save_button = tk.Button(
+            header,
+            text="SAVE NOTE",
+            command=self.save_note,
+            bg=self.PRIMARY,
+            fg="white",
+            activebackground=self.PRIMARY_HOVER,
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 10, "bold"),
+            padx=22,
+            pady=9
+        )
+
+        self.header_save_button.pack(
+            side="right",
+            padx=18
+        )
+
         # =====================================================
         # WORK AREA
         # =====================================================
@@ -1086,8 +1079,6 @@ class NotesApplication:
         list_panel.pack_propagate(
             False
         )
-
-        # Search
 
         search_frame = tk.Frame(
             list_panel,
@@ -1132,8 +1123,6 @@ class NotesApplication:
             "write",
             self.search_notes
         )
-
-        # Tree
 
         tree_frame = tk.Frame(
             list_panel,
@@ -1229,7 +1218,150 @@ class NotesApplication:
             expand=True
         )
 
-        # Editor top
+        # =====================================================
+        # FIXED ACTION BAR
+        #
+        # IMPORTANT:
+        # This is packed FIRST so it remains visible.
+        # =====================================================
+
+        button_bar = tk.Frame(
+            editor,
+            bg="#F9FAFB",
+            bd=1,
+            relief="solid",
+            height=68
+        )
+
+        button_bar.pack(
+            side="bottom",
+            fill="x"
+        )
+
+        button_bar.pack_propagate(
+            False
+        )
+
+        # -----------------------------------------------------
+        # DELETE
+        # -----------------------------------------------------
+
+        delete_area = tk.Frame(
+            button_bar,
+            bg="#F9FAFB"
+        )
+
+        delete_area.pack(
+            side="right",
+            padx=14
+        )
+
+        self.delete_button = tk.Button(
+            delete_area,
+            text="DELETE NOTE",
+            command=self.delete_note,
+            bg=self.DANGER,
+            fg="white",
+            activebackground=self.DANGER_HOVER,
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+            padx=18,
+            pady=9
+        )
+
+        self.delete_button.pack(
+            pady=9
+        )
+
+        # -----------------------------------------------------
+        # MAIN ACTIONS
+        # -----------------------------------------------------
+
+        actions = tk.Frame(
+            button_bar,
+            bg="#F9FAFB"
+        )
+
+        actions.pack(
+            side="left",
+            padx=14
+        )
+
+        self.new_button = tk.Button(
+            actions,
+            text="+ NEW NOTE",
+            command=self.new_note,
+            bg=self.SIDEBAR_LIGHT,
+            fg="white",
+            activebackground="#2B3850",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+            padx=18,
+            pady=9
+        )
+
+        self.new_button.pack(
+            side="left",
+            padx=(0, 8),
+            pady=9
+        )
+
+        # =====================================================
+        # VERY CLEAR SAVE BUTTON
+        # =====================================================
+
+        self.save_button = tk.Button(
+            actions,
+            text="✓  SAVE NOTE",
+            command=self.save_note,
+            bg=self.PRIMARY,
+            fg="white",
+            activebackground=self.PRIMARY_HOVER,
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 11, "bold"),
+            padx=28,
+            pady=10
+        )
+
+        self.save_button.pack(
+            side="left",
+            padx=(0, 8),
+            pady=8
+        )
+
+        self.cancel_button = tk.Button(
+            actions,
+            text="CANCEL / BACK",
+            command=self.cancel_editing,
+            bg="#667085",
+            fg="white",
+            activebackground="#475467",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            cursor="hand2",
+            font=("Segoe UI", 9, "bold"),
+            padx=18,
+            pady=9
+        )
+
+        self.cancel_button.pack(
+            side="left",
+            pady=9
+        )
+
+        # =====================================================
+        # EDITOR TOP
+        # =====================================================
 
         editor_top = tk.Frame(
             editor,
@@ -1263,10 +1395,13 @@ class NotesApplication:
         )
 
         self.unsaved_label.pack(
-            side="right"
+            side="right",
+            padx=(10, 0)
         )
 
-        # Title
+        # =====================================================
+        # TITLE
+        # =====================================================
 
         tk.Label(
             editor,
@@ -1295,7 +1430,9 @@ class NotesApplication:
             ipady=8
         )
 
-        # Content
+        # =====================================================
+        # CONTENT HEADER
+        # =====================================================
 
         content_label_frame = tk.Frame(
             editor,
@@ -1328,6 +1465,10 @@ class NotesApplication:
         self.character_label.pack(
             side="right"
         )
+
+        # =====================================================
+        # EXPANDING CONTENT AREA
+        # =====================================================
 
         text_frame = tk.Frame(
             editor,
@@ -1386,11 +1527,13 @@ class NotesApplication:
             self.editor_changed
         )
 
-        # Date
+        # =====================================================
+        # DATE
+        # =====================================================
 
         self.date_label = tk.Label(
             editor,
-            text="New note",
+            text="New note — not saved yet",
             bg=self.WHITE,
             fg=self.MUTED,
             font=("Segoe UI", 8)
@@ -1400,89 +1543,6 @@ class NotesApplication:
             anchor="w",
             padx=20,
             pady=(0, 10)
-        )
-
-        # =====================================================
-        # BUTTON BAR
-        # =====================================================
-
-        button_bar = tk.Frame(
-            editor,
-            bg="#F9FAFB",
-            bd=1,
-            relief="solid"
-        )
-
-        button_bar.pack(
-            fill="x"
-        )
-
-        button_left = tk.Frame(
-            button_bar,
-            bg="#F9FAFB"
-        )
-
-        button_left.pack(
-            side="left",
-            padx=14,
-            pady=12
-        )
-
-        self.new_button = self.create_button(
-            button_left,
-            "＋ NEW",
-            self.new_note,
-            self.SIDEBAR_LIGHT
-        )
-
-        self.new_button.pack(
-            side="left",
-            padx=(0, 7)
-        )
-
-        self.save_button = self.create_button(
-            button_left,
-            "✓ SAVE",
-            self.save_note,
-            self.PRIMARY
-        )
-
-        self.save_button.pack(
-            side="left",
-            padx=(0, 7)
-        )
-
-        self.cancel_button = self.create_button(
-            button_left,
-            "↶ CANCEL",
-            self.cancel_editing,
-            "#667085"
-        )
-
-        self.cancel_button.pack(
-            side="left"
-        )
-
-        button_right = tk.Frame(
-            button_bar,
-            bg="#F9FAFB"
-        )
-
-        button_right.pack(
-            side="right",
-            padx=14,
-            pady=12
-        )
-
-        self.delete_button = self.create_button(
-            button_right,
-            "DELETE",
-            self.delete_note,
-            self.DANGER
-        )
-
-        self.delete_button.pack(
-            side="right"
         )
 
         # =====================================================
@@ -1516,7 +1576,9 @@ class NotesApplication:
             padx=18
         )
 
-        # Keyboard shortcuts
+        # =====================================================
+        # KEYBOARD SHORTCUTS
+        # =====================================================
 
         self.root.bind(
             "<Control-n>",
@@ -1537,6 +1599,10 @@ class NotesApplication:
             "<Escape>",
             lambda event: self.cancel_editing()
         )
+
+        # =====================================================
+        # LOAD
+        # =====================================================
 
         self.load_notes()
 
@@ -1564,10 +1630,22 @@ class NotesApplication:
         if self.search_var is not None:
             search = self.search_var.get()
 
-        notes = self.database.get_notes(
-            self.current_user["id"],
-            search
-        )
+        try:
+
+            notes = self.database.get_notes(
+                self.current_user["id"],
+                search
+            )
+
+        except Exception as error:
+
+            self.update_status(
+                "Could not load notes: {}".format(
+                    error
+                )
+            )
+
+            return
 
         for note in notes:
 
@@ -1576,14 +1654,18 @@ class NotesApplication:
             display_title = title
 
             if len(display_title) > 34:
+
                 display_title = (
                     display_title[:31] +
                     "..."
                 )
 
-            date_value = note["updated_at"]
+            date_value = str(
+                note["updated_at"]
+            )
 
             if len(date_value) >= 16:
+
                 date_value = date_value[:16]
 
             self.notes_tree.insert(
@@ -1596,9 +1678,15 @@ class NotesApplication:
                 )
             )
 
-        count = self.database.note_count(
-            self.current_user["id"]
-        )
+        try:
+
+            count = self.database.note_count(
+                self.current_user["id"]
+            )
+
+        except Exception:
+
+            count = len(notes)
 
         if hasattr(
             self,
@@ -1686,10 +1774,23 @@ class NotesApplication:
 
             return
 
-        note = self.database.get_note(
-            note_id,
-            self.current_user["id"]
-        )
+        try:
+
+            note = self.database.get_note(
+                note_id,
+                self.current_user["id"]
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Open Note",
+                "Could not open the note.\n\n{}".format(
+                    error
+                )
+            )
+
+            return
 
         if not note:
             return
@@ -1699,7 +1800,7 @@ class NotesApplication:
         )
 
     # =========================================================
-    # LOAD NOTE INTO EDITOR
+    # LOAD NOTE
     # =========================================================
 
     def load_note_into_editor(
@@ -1765,25 +1866,26 @@ class NotesApplication:
 
     def new_note(self):
 
-        if self.title_entry is not None:
+        if self.title_entry is None:
+            return
 
-            if self.has_unsaved_changes():
+        if self.has_unsaved_changes():
 
-                answer = messagebox.askyesnocancel(
-                    "Unsaved Changes",
-                    "You have unsaved changes.\n\n"
-                    "Save them before creating a new note?"
-                )
+            answer = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                "You have unsaved changes.\n\n"
+                "Save them before creating a new note?"
+            )
 
-                if answer is None:
+            if answer is None:
+                return
+
+            if answer:
+
+                if not self.save_note(
+                    show_message=False
+                ):
                     return
-
-                if answer:
-
-                    if not self.save_note(
-                        show_message=False
-                    ):
-                        return
 
         self.current_note_id = None
 
@@ -1828,7 +1930,7 @@ class NotesApplication:
                 pass
 
         self.update_status(
-            "Ready to create a new note"
+            "Ready to create a new note — click SAVE NOTE"
         )
 
         self.title_entry.focus_set()
@@ -1851,7 +1953,7 @@ class NotesApplication:
             )
 
             self.update_status(
-                "You have unsaved changes"
+                "Unsaved changes — click SAVE NOTE"
             )
 
         else:
@@ -1859,6 +1961,10 @@ class NotesApplication:
             self.unsaved_label.config(
                 text=""
             )
+
+    # =========================================================
+    # UNSAVED CHECK
+    # =========================================================
 
     def has_unsaved_changes(self):
 
@@ -1876,7 +1982,8 @@ class NotesApplication:
 
             return bool(
                 current_title.strip()
-                or current_content.strip()
+                or
+                current_content.strip()
             )
 
         return (
@@ -1917,6 +2024,9 @@ class NotesApplication:
         show_message=True
     ):
 
+        if self.title_entry is None:
+            return False
+
         title = self.title_entry.get().strip()
 
         content = self.content_text.get(
@@ -1924,18 +2034,26 @@ class NotesApplication:
             "end-1c"
         ).strip()
 
+        # -----------------------------------------------------
+        # VALIDATE TITLE
+        # -----------------------------------------------------
+
         if not title:
 
             if show_message:
 
                 messagebox.showwarning(
                     "Save Note",
-                    "Please enter a title."
+                    "Please enter a title before saving."
                 )
 
             self.title_entry.focus_set()
 
             return False
+
+        # -----------------------------------------------------
+        # VALIDATE TITLE LENGTH
+        # -----------------------------------------------------
 
         if len(title) > MAX_NOTE_TITLE_LENGTH:
 
@@ -1948,7 +2066,13 @@ class NotesApplication:
                     )
                 )
 
+            self.title_entry.focus_set()
+
             return False
+
+        # -----------------------------------------------------
+        # VALIDATE CONTENT
+        # -----------------------------------------------------
 
         if not content:
 
@@ -1956,7 +2080,7 @@ class NotesApplication:
 
                 messagebox.showwarning(
                     "Save Note",
-                    "Please enter some note content."
+                    "Please enter some note content before saving."
                 )
 
             self.content_text.focus_set()
@@ -1964,16 +2088,42 @@ class NotesApplication:
             return False
 
         # -----------------------------------------------------
-        # CREATE
+        # CREATE NEW NOTE
         # -----------------------------------------------------
 
         if self.current_note_id is None:
 
-            note_id = self.database.create_note(
-                self.current_user["id"],
-                title,
-                content
-            )
+            try:
+
+                note_id = self.database.create_note(
+                    self.current_user["id"],
+                    title,
+                    content
+                )
+
+            except Exception as error:
+
+                if show_message:
+
+                    messagebox.showerror(
+                        "Save Note",
+                        "The note could not be saved.\n\n{}".format(
+                            error
+                        )
+                    )
+
+                return False
+
+            if note_id is None:
+
+                if show_message:
+
+                    messagebox.showerror(
+                        "Save Note",
+                        "The database did not return a note ID."
+                    )
+
+                return False
 
             self.current_note_id = note_id
 
@@ -1982,17 +2132,32 @@ class NotesApplication:
             message = "Note saved successfully."
 
         # -----------------------------------------------------
-        # UPDATE
+        # UPDATE EXISTING NOTE
         # -----------------------------------------------------
 
         else:
 
-            success = self.database.update_note(
-                self.current_note_id,
-                self.current_user["id"],
-                title,
-                content
-            )
+            try:
+
+                success = self.database.update_note(
+                    self.current_note_id,
+                    self.current_user["id"],
+                    title,
+                    content
+                )
+
+            except Exception as error:
+
+                if show_message:
+
+                    messagebox.showerror(
+                        "Save Note",
+                        "The note could not be updated.\n\n{}".format(
+                            error
+                        )
+                    )
+
+                return False
 
             if not success:
 
@@ -2008,7 +2173,7 @@ class NotesApplication:
             message = "Note updated successfully."
 
         # -----------------------------------------------------
-        # UPDATE ORIGINAL VALUES
+        # UPDATE LOCAL STATE
         # -----------------------------------------------------
 
         self.original_title = title
@@ -2018,7 +2183,15 @@ class NotesApplication:
             text=""
         )
 
+        # -----------------------------------------------------
+        # REFRESH NOTE LIST
+        # -----------------------------------------------------
+
         self.load_notes()
+
+        # -----------------------------------------------------
+        # RELOAD SAVED NOTE
+        # -----------------------------------------------------
 
         self.select_note_after_save()
 
@@ -2026,10 +2199,14 @@ class NotesApplication:
             message
         )
 
+        # -----------------------------------------------------
+        # CONFIRMATION
+        # -----------------------------------------------------
+
         if show_message:
 
             messagebox.showinfo(
-                "Saved",
+                "Save Complete",
                 message
             )
 
@@ -2044,10 +2221,16 @@ class NotesApplication:
         if not self.current_note_id:
             return
 
-        note = self.database.get_note(
-            self.current_note_id,
-            self.current_user["id"]
-        )
+        try:
+
+            note = self.database.get_note(
+                self.current_note_id,
+                self.current_user["id"]
+            )
+
+        except Exception:
+
+            return
 
         if not note:
             return
@@ -2074,7 +2257,7 @@ class NotesApplication:
             pass
 
     # =========================================================
-    # CANCEL
+    # CANCEL / BACK
     # =========================================================
 
     def cancel_editing(self):
@@ -2083,10 +2266,16 @@ class NotesApplication:
 
             if self.current_note_id:
 
-                note = self.database.get_note(
-                    self.current_note_id,
-                    self.current_user["id"]
-                )
+                try:
+
+                    note = self.database.get_note(
+                        self.current_note_id,
+                        self.current_user["id"]
+                    )
+
+                except Exception:
+
+                    note = None
 
                 if note:
 
@@ -2110,10 +2299,16 @@ class NotesApplication:
 
         if self.current_note_id:
 
-            note = self.database.get_note(
-                self.current_note_id,
-                self.current_user["id"]
-            )
+            try:
+
+                note = self.database.get_note(
+                    self.current_note_id,
+                    self.current_user["id"]
+                )
+
+            except Exception:
+
+                note = None
 
             if note:
 
@@ -2147,6 +2342,8 @@ class NotesApplication:
                 "New note cleared"
             )
 
+            self.title_entry.focus_set()
+
     # =========================================================
     # DELETE
     # =========================================================
@@ -2162,10 +2359,23 @@ class NotesApplication:
 
             return
 
-        note = self.database.get_note(
-            self.current_note_id,
-            self.current_user["id"]
-        )
+        try:
+
+            note = self.database.get_note(
+                self.current_note_id,
+                self.current_user["id"]
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Delete Note",
+                "Could not load the selected note.\n\n{}".format(
+                    error
+                )
+            )
+
+            return
 
         if not note:
 
@@ -2192,10 +2402,23 @@ class NotesApplication:
         if not answer:
             return
 
-        success = self.database.delete_note(
-            self.current_note_id,
-            self.current_user["id"]
-        )
+        try:
+
+            success = self.database.delete_note(
+                self.current_note_id,
+                self.current_user["id"]
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Delete Note",
+                "The note could not be deleted.\n\n{}".format(
+                    error
+                )
+            )
+
+            return
 
         if not success:
 
@@ -2257,9 +2480,22 @@ class NotesApplication:
 
     def export_notes(self):
 
-        count = self.database.note_count(
-            self.current_user["id"]
-        )
+        try:
+
+            count = self.database.note_count(
+                self.current_user["id"]
+            )
+
+        except Exception as error:
+
+            messagebox.showerror(
+                "Export Notes",
+                "Could not read your notes.\n\n{}".format(
+                    error
+                )
+            )
+
+            return
 
         if count == 0:
 
